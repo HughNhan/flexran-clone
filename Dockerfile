@@ -4,5 +4,5 @@ WORKDIR /opt/
 COPY flexran ./flexran
 COPY dpdk ./dpdk
 COPY intel ./intel
-COPY auto ./auto
+#COPY auto ./auto
 
