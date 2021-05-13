@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/antchfx/xmlquery"
-	"github.com/go-xmlfmt/xmlfmt"
+	//"github.com/go-xmlfmt/xmlfmt"
 	"github.com/google/cadvisor/fs"
 	"github.com/google/cadvisor/machine"
 	"github.com/google/cadvisor/utils/sysfs"
@@ -216,10 +216,11 @@ func main() {
 	defer ofl1.Close()
 	defer ofl2.Close()
 
-	ofl1.WriteString(xmlfmt.FormatXML(l1doc.OutputXML(false), "", "  "))
+	//ofl1.WriteString(xmlfmt.FormatXML(l1doc.OutputXML(false), "", "  "))
+	ofl1.WriteString(l1doc.OutputXML(false))
 	ofl1.Sync()
 
-	ofl2.WriteString(xmlfmt.FormatXML(l2doc.OutputXML(false), "", "  "))
+	ofl2.WriteString(l2doc.OutputXML(false))
 	ofl2.Sync()
 
 }
