@@ -1,0 +1,33 @@
+L1:
+  Threads:
+  -
+    - name: systemThread
+      pri: 0
+  -
+    - name: timerThread
+      pri: 6
+    - name: radioDpdkMaster
+      pri: 9
+  -
+    - name: FpgaDriverCpuInfo
+      pri: 6
+    - name: FrontHaulCpuInfo
+      pri: 6
+  BbuPools:
+  - name: BbuPoolThreadDefault_0_63
+    low: 0
+    high: 63
+    threads: 2 
+L2:
+  Threads:
+  -
+    - name: wlsRxThread
+      pri: 5
+  -
+    - name: systemThread
+      pri: 0
+    - name: runThread
+      pri: 4
+  -
+    - name: urllcThread
+      pri: 5
