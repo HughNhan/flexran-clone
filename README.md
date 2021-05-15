@@ -1,3 +1,7 @@
+## How to compile
+
+The compile step: https://gist.githubusercontent.com/jianzzha/e824b28c174172e8d90f3c2cba900e1d/raw/62a4808e8fb3972416e64829737cdd259e01a470/gistfile1.txt
+
 ## How to run flexran from podman for software FEC test
 
 ```podman run --name flexran -d --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest sleep infinity```
