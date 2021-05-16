@@ -49,6 +49,13 @@ class CpuInfo:
             r = re.compile('^cpu[0-9]+')
             cpudirs = [f for f in os.listdir(cputopology) if r.match(f)]
             for cpudir in cpudirs:
+                # skip the offline cpus
+                try:
+                    online = open('/'.join([cputopology, cpudir, 'online'])).read().rstrip('\n')
+                    if online == '0':
+                        continue
+                except:
+                    continue
                 self.t = {}
                 self.topology[cpudir] = self.t
                 self.t['physical_package_id'] = open('/'.join([cputopology, cpudir, '/topology/physical_package_id'])).read().rstrip('\n')
