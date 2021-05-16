@@ -8,7 +8,10 @@ The compile step: https://gist.githubusercontent.com/jianzzha/e824b28c174172e8d9
 
 From terminal 1, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh```. This will drop into the  PHY console.
 
-From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./l2.sh```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
+Or instead of running the pod in deamon mode, one can directly drop into the PHY console in this way:
+```podman run --name flexran -it --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest ./setup.sh```
+
+From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l2```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
 
 ## How to run flexran from Openshift for software FEC test
 
@@ -67,4 +70,6 @@ EOF
 
 After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh```.
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./l2.sh```. From the TESTMAC console, execute ```runall 0``` to start the test.  
+on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
+
+To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11.  
