@@ -263,8 +263,8 @@ def main(name, argv):
     l1output = l1xml
     l2output = l2xml
     if not writeback:
-        l1output = os.path.basename(l1xml) + '.generated'
-        l2output = os.path.basename(l2xml) + '.generated'
+        l1output = os.path.basename(l1xml) + '.out'
+        l2output = os.path.basename(l2xml) + '.out'
     setting.writel1xml(l1output)
     setting.writel2xml(l2output)
 
