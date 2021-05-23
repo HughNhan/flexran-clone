@@ -1,6 +1,43 @@
 # Build flexran container image
 
-The compile step: https://gist.githubusercontent.com/jianzzha/e824b28c174172e8d90f3c2cba900e1d/raw/62a4808e8fb3972416e64829737cdd259e01a470/gistfile1.txt
+## Compile flexran
+
+The following steps prove to work on fresh installed RHEL8.2
+
+```
+subscription-manager register
+subscription-manager attach --auto
+subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
+yum groupinstall -y 'Development Tools'
+yum install -y git patch tar zip unzip python3 cmake3 libstdc++-static elfutils-libelf-devel zlib-devel numactl-devel libhugetlbfs-devel
+pip3 install meson && pip3 install ninja
+mkdir -p /opt && cd /opt && git clone git://dpdk.org/dpdk-stable dpdk
+cd /opt/dpdk && git checkout 20.11 && patch -p1 <  dpdk_20.11_20.11.5.patch
+cd /opt && tar zxvf system_studio_2019_update_5_ultimate_edition.tar.gz
+cd /opt/system_studio_2019_update_5_ultimate_edition && sed -i -r -e 's/^ACCEPT_EULA=.*/ACCEPT_EULA=accept/' -e 's/^ACTIVATION_TYPE=.*/ACTIVATION_TYPE=license_file/' -e 's%^#?ACTIVATION_LICENSE_FILE=.*%ACTIVATION_LICENSE_FILE=/opt/flexran_license.lic%' silent.cfg
+cd /opt/system_studio_2019_update_5_ultimate_edition && ./install.sh -s silent.cfg
+cd /opt && mkdir -p flexran && tar zxvf FlexRAN-20.11.tar.gz -C flexran/
+cd /opt/flexran && ./extract.sh 
+cd /opt && unzip -d flexran FlexRAN-20.11.6_update.zip
+cd /opt/flexran && patch -p1 < FlexRAN-20.11.6_update.patch
+cd /opt/flexran && source ./set_env_var.sh -d
+export RTE_SDK=/opt/dpdk
+cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk 
+cd /opt/dpdk && meson build
+cd /opt/dpdk/build && meson configure -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
+export MESON_BUILD=1
+cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
+```
+
+## Build container image
+
+```
+cd /opt
+curl -L -O https://raw.githubusercontent.com/jianzzha/flexran/master/Dockerfile
+mkdir -p auto
+pushd /opt/auto && curl -L --remote-name-all https://raw.githubusercontent.com/jianzzha/flexran/master/auto/{setup.sh,cpu.py,threads.yaml,phycfg_timer.xml,testmac_cfg.xml} && popd
+podman build -t flexran .
+```
 
 ## Verify flexran container image using podman
 
