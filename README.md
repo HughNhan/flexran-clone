@@ -1,8 +1,8 @@
-## How to compile
+# Build flexran container image
 
 The compile step: https://gist.githubusercontent.com/jianzzha/e824b28c174172e8d90f3c2cba900e1d/raw/62a4808e8fb3972416e64829737cdd259e01a470/gistfile1.txt
 
-## How to run flexran from podman for software FEC test
+## Verify flexran container image using podman
 
 ```podman run --name flexran -d --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest sleep infinity```
 
@@ -12,6 +12,250 @@ Or instead of running the pod in deamon mode, one can directly drop into the PHY
 ```podman run --name flexran -it --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest ./setup.sh```
 
 From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l2```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
+
+# Running Flexran from Openshift
+
+## Install performance-addon operator
+
+```
+oc label --overwrite node worker1 node-role.kubernetes.io/worker-cnf=""
+oc label --overwrite node worker1 feature.node.kubernetes.io/network-sriov.capable=true
+
+cat <<EOF  | oc create -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    openshift.io/run-level: "1" 
+  name: openshift-performance-addon
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-performance-addon-operator
+  namespace: openshift-performance-addon
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: performance-addon-operator
+  namespace: openshift-performance-addon
+spec:
+  channel: "4.6"
+  name: performance-addon-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+while ! oc get pods -n openshift-performance-addon | grep Running; do
+    echo "waiting for performance-addon operator online"
+    sleep 5
+done
+
+cat <<EOF  | oc create -f -
+kind: MachineConfigPool
+metadata:
+  name: worker-cnf
+  namespace: openshift-machine-config-operator
+  labels:
+    machineconfiguration.openshift.io/role: worker-cnf
+spec:
+  paused: false 
+  machineConfigSelector:
+    matchExpressions:
+      - key: machineconfiguration.openshift.io/role
+        operator: In
+        values: [worker,worker-cnf]
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker-cnf: ""
+EOF
+
+cat <<EOF  | oc create -f -
+apiVersion: performance.openshift.io/v1alpha1
+kind: PerformanceProfile
+metadata:
+  name: cnv-sriov-profile 
+spec:
+  cpu:
+    isolated: "4-39"
+    reserved: "0-3"
+  hugepages:
+    defaultHugepagesSize: "1G"
+    pages:
+    - size: "1G"
+      count: 16 
+  realTimeKernel:
+    enabled: true 
+  nodeSelector:
+    node-role.kubernetes.io/worker-cnf: "" 
+EOF
+
+status=$(oc get mcp | awk '/worker-cnf/{print $4}')
+while [[ $status != "False" ]]; do 
+    echo "waiting for mcp complete"
+    sleep 5
+    status=$(oc get mcp | awk '/worker-cnf/{print $4}')
+done
+```
+
+## install N3000 programming operator
+
+```
+oc new-project vran-acceleration-operators
+
+cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: n3000-operators
+  namespace: vran-acceleration-operators
+spec:
+  targetNamespaces:
+    - vran-acceleration-operators
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: n3000-subscription
+  namespace: vran-acceleration-operators 
+spec:
+  channel: stable
+  name: n3000
+  source: certified-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+# matching: OpenNESS Operator for Intel® FPGA PAC N3000
+while ! oc get csv -n vran-acceleration-operators | grep 'FPGA PAC N3000'; do
+    echo "wait for N3000 programming operator online"
+    sleep 5
+done
+```
+
+## Flash N3000 with 5G image
+
+```
+cat <<EOF | oc apply -f -
+apiVersion: fpga.intel.com/v1
+kind: N3000Cluster
+metadata:
+  name: n3000
+  namespace: vran-acceleration-operators
+spec:
+  nodes:
+    - nodeName: "worker1"
+      fpga:
+        - userImageURL: "http://192.168.222.1:81/bin/20ww43.5-2x2x25G-5GLDPC-v1.6.2-3.0.1-unsigned.bin"
+          PCIAddr: "0000:61:00.0"
+          checksum: "cab45415c418615d005dd587f4f11e9a"
+EOF
+
+# node status should change to progress
+oc get n3000node
+
+# wait for it to complete
+while oc get n3000node | grep InProgress
+    echo "flashing in progress"
+    sleep 5
+done
+```
+
+## Install wireless FEC operator
+
+```
+if ! oc get ns | grep vran-acceleration-operators; then
+    oc new-project vran-acceleration-operators
+fi
+
+cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: vran-operators
+  namespace: vran-acceleration-operators
+spec:
+  targetNamespaces:
+    - vran-acceleration-operators
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: sriov-fec-subscription
+  namespace: vran-acceleration-operators
+spec:
+  channel: stable
+  name: sriov-fec
+  source: certified-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+# matching: OpenNESS SR-IOV Operator for Wireless FEC Accelerators
+while ! oc get csv -n vran-acceleration-operators | grep 'Wireless FEC'; do
+    echo "wait for Wireless FEC operator online"
+    sleep 5
+done
+```
+
+## Create FEC VFs
+
+```
+cat <<EOF | oc apply -f -
+apiVersion: sriovfec.intel.com/v1
+kind: SriovFecClusterConfig
+metadata:
+  name: config
+  namespace: vran-acceleration-operators
+spec:
+  nodes:
+    - nodeName: worker1 
+      physicalFunctions:
+        - pciAddress: 0000:66:00.0 
+          pfDriver: pci-pf-stub
+          vfDriver: vfio-pci
+          vfAmount: 2
+          bbDevConfig:
+            n3000:
+              # Network Type: either "FPGA_5GNR" or "FPGA_LTE"
+              networkType: "FPGA_5GNR"
+              # Programming mode: 0 = VF Programming, 1 = PF Programming
+              pfMode: false
+              flrTimeout: 610
+              downlink:
+                bandwidth: 3
+                loadBalance: 128
+                queues:
+                  vf0: 16 
+                  vf1: 16 
+                  vf2: 0
+                  vf3: 0
+                  vf4: 0
+                  vf5: 0
+                  vf6: 0
+                  vf7: 0
+              uplink:
+                bandwidth: 3
+                loadBalance: 128
+                queues:
+                  vf0: 16 
+                  vf1: 16 
+                  vf2: 0
+                  vf3: 0
+                  vf4: 0
+                  vf5: 0
+                  vf6: 0
+                  vf7: 0
+EOF
+
+# matching: worker1   Succeeded
+while oc get sriovfecnodeconfigs | grep Succeeded; do
+    echo "waiting for sriovfecnodeconfigs succeeded"
+    sleep 5
+done
+
+# make sure intel.com/intel_fec_5g show up
+oc get node worker1 -o json | jq -r '.status.capacity' 
+```
 
 ## How to run flexran from Openshift for software FEC test
 
@@ -73,3 +317,54 @@ After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This w
 on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
 
 To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11.  
+
+## How to run flexran from Openshift for N3000 FEC test
+
+```
+cat <<EOF  | oc create -f -
+apiVersion: v1 
+kind: Pod 
+metadata:
+  name: flexran
+spec:
+  restartPolicy: Never
+  containers:
+  - name: flexran 
+    image: 10.16.231.128:5000/flexran 
+    imagePullPolicy: Always 
+    command:
+      - sleep
+      - "36000" 
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /dev/hugepages
+      name: hugepage
+    - mountPath: /sys
+      name: sys
+    - name: varrun
+      mountPath: /var/run/dpdk
+    resources:
+      limits:
+        hugepages-1Gi: 16Gi
+        memory: 16Gi
+        cpu: 8 
+        intel.com/intel_fec_5g: '2'
+      requests:
+        hugepages-1Gi: 16Gi
+        memory: 16Gi
+        cpu: 8
+        intel.com/intel_fec_5g: '2'
+  volumes:
+  - name: hugepage
+    emptyDir:
+      medium: HugePages
+  - name: sys
+    hostPath:
+      path: /sys
+  - name: varrun
+    emptyDir: {}
+  nodeSelector:
+    node-role.kubernetes.io/worker-cnf: ""
+EOF
+```
