@@ -234,7 +234,7 @@ while ! oc get csv -n vran-acceleration-operators | grep 'Wireless FEC'; do
 done
 ```
 
-## Create FEC VFs
+## Create FEC VFs on N3000
 
 ```
 cat <<EOF | oc apply -f -
@@ -294,7 +294,57 @@ done
 oc get node worker1 -o json | jq -r '.status.capacity' 
 ```
 
-## How to run flexran from Openshift for software FEC test
+## Create FEC VFs on ACC100
+
+```
+cat <<EOF  | oc create -f -
+apiVersion: sriovfec.intel.com/v1
+kind: SriovFecClusterConfig
+metadata:
+  name: config
+  namespace: vran-acceleration-operators
+spec:
+  nodes:
+    - nodeName: worker1
+      physicalFunctions:
+        - pciAddress: 0000:b5:00.0
+          pfDriver: pci-pf-stub
+          vfDriver: vfio-pci
+          vfAmount: 16
+          bbDevConfig:
+            acc100:
+              pfMode: false
+              numVfBundles: 16
+              maxQueueSize: 1024
+              uplink4G:
+                numQueueGroups: 0
+                numAqsPerGroups: 16
+                aqDepthLog2: 4
+              downlink4G:
+                numQueueGroups: 0
+                numAqsPerGroups: 16
+                aqDepthLog2: 4
+              uplink5G:
+                numQueueGroups: 4
+                numAqsPerGroups: 16
+                aqDepthLog2: 4
+              downlink5G:
+                numQueueGroups: 4
+                numAqsPerGroups: 16
+                aqDepthLog2: 4
+EOF
+
+# matching: worker1   Succeeded
+while oc get sriovfecnodeconfigs | grep Succeeded; do
+    echo "waiting for sriovfecnodeconfigs succeeded"
+    sleep 5
+done
+
+# make sure intel.com/intel_fec_acc100 show up
+oc get node worker1 -o json | jq -r '.status.capacity' 
+```
+
+## Run flexran local test from Openshift with software FEC
 
 ```
 cat <<EOF  | oc create -f -
@@ -353,9 +403,13 @@ After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This w
 
 on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
 
-To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11.  
+To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
+on the worker node,
+```
+for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
+```
 
-## How to run flexran from Openshift for N3000 FEC test
+## Run flexran local test from Openshift with FEC hardware acceleration
 
 ```
 cat <<EOF  | oc create -f -
@@ -386,12 +440,278 @@ spec:
         hugepages-1Gi: 16Gi
         memory: 16Gi
         cpu: 8 
-        intel.com/intel_fec_5g: '2'
+        intel.com/intel_fec_5g: '1'
       requests:
         hugepages-1Gi: 16Gi
         memory: 16Gi
         cpu: 8
-        intel.com/intel_fec_5g: '2'
+        intel.com/intel_fec_5g: '1'
+  volumes:
+  - name: hugepage
+    emptyDir:
+      medium: HugePages
+  - name: sys
+    hostPath:
+      path: /sys
+  - name: varrun
+    emptyDir: {}
+  nodeSelector:
+    node-role.kubernetes.io/worker-cnf: ""
+EOF
+```
+
+To use acc100, replace intel_fec_5g with intel_fec_acc100 in the above yaml.
+
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh```.
+
+on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
+
+To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
+on the worker node,
+```
+for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
+```
+
+## Disable chronyd
+
+```
+cat <<EOF  | oc create -f -
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    # Pay attention to the node label, create MCP accordingly
+    machineconfiguration.openshift.io/role: worker-cnf
+  name: disable-chronyd
+spec:
+  config:
+    ignition:
+      version: 2.2.0
+    systemd:
+      units:
+        - contents: |
+            [Unit]
+            Description=NTP client/server
+            Documentation=man:chronyd(8) man:chrony.conf(5)
+            After=ntpdate.service sntp.service ntpd.service
+            Conflicts=ntpd.service systemd-timesyncd.service
+            ConditionCapability=CAP_SYS_TIME
+
+            [Service]
+            Type=forking
+            PIDFile=/run/chrony/chronyd.pid
+            EnvironmentFile=-/etc/sysconfig/chronyd
+            ExecStart=/usr/sbin/chronyd $OPTIONS
+            ExecStartPost=/usr/libexec/chrony-helper update-daemon
+            PrivateTmp=yes
+            ProtectHome=yes
+            ProtectSystem=full
+
+            [Install]
+            WantedBy=multi-user.target
+          enabled: false
+          name: "chronyd.service"
+EOF
+```
+
+## Enable ptp
+
+```
+cat <<EOF  | oc create -f -
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-ptp
+  labels:
+    name: openshift-ptp
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: ptp-operators
+  namespace: openshift-ptp
+spec:
+  targetNamespaces:
+  - openshift-ptp
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ptp-operator-subscription
+  namespace: openshift-ptp
+spec:
+  channel: "4.6"
+  name: ptp-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+while ! oc get pods -n openshift-ptp | grep Running; do
+    echo 'waiting for ptp pods ...'
+    sleep 5
+done
+
+cat <<EOF  | oc create -f -
+apiVersion: ptp.openshift.io/v1
+kind: PtpConfig
+metadata:
+  name: ptp-cfg
+  namespace: openshift-ptp
+spec:
+  profile:
+  - interface: ens3f1
+    name: profile1
+    phc2sysOpts: -a -r
+    ptp4lOpts: -s -2 -m
+  recommend:
+  - match:
+    - nodeLabel: node-role.kubernetes.io/worker-cnf
+    priority: 10
+    profile: profile1
+EOF
+```
+
+Check PTP status and make sure it is synced to the grand master, for example,
+```
+oc logs linuxptp-daemon-48qz2 -n openshift-ptp -c linuxptp-daemon-container
+ptp4l[203555.162]: rms    6 max    8 freq   -128 +/-   5 delay  1507 +/-   0
+phc2sys[203555.677]: CLOCK_REALTIME rms    5 max    5 freq  +6744 +/-   0 delay   502 +/-   0
+phc2sys[203556.677]: CLOCK_REALTIME rms    8 max    8 freq  +6733 +/-   0 delay   503 +/-   0
+ptp4l[203557.162]: rms    2 max    3 freq   -130 +/-   2 delay  1507 +/-   0
+phc2sys[203557.677]: CLOCK_REALTIME rms    1 max    1 freq  +6737 +/-   0 delay   575 +/-   0
+phc2sys[203558.678]: CLOCK_REALTIME rms    1 max    1 freq  +6737 +/-   0 delay   578 +/-   0
+ptp4l[203559.163]: rms    2 max    3 freq   -132 +/-   1 delay  1507 +/-   0
+phc2sys[203559.678]: CLOCK_REALTIME rms    2 max    2 freq  +6736 +/-   0 delay   573 +/-   0
+```
+
+## Create SRIOV VFs for front haul link
+
+```
+cat <<EOF  | oc create -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-sriov-network-operator
+  labels:
+    openshift.io/run-level: "1"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: sriov-network-operators
+  namespace: openshift-sriov-network-operator
+spec:
+  targetNamespaces:
+  - openshift-sriov-network-operator
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: sriov-network-operator-subsription
+  namespace: openshift-sriov-network-operator
+spec:
+  channel: "4.6"
+  name: sriov-network-operator
+  source: redhat-operators 
+  sourceNamespace: openshift-marketplace
+EOF
+
+while ! oc get pods -n openshift-sriov-network-operator | grep Running; do
+    echo 'waiting for sriov pods ...'
+    sleep 5
+done
+
+cat <<EOF  | oc create -f -
+apiVersion: sriovnetwork.openshift.io/v1
+kind: SriovNetworkNodePolicy
+metadata:
+  name: policy-intel-west
+  namespace: openshift-sriov-network-operator
+spec:
+  deviceType: netdevice
+  mtu: 9000
+  nicSelector:
+    deviceID: "158b"
+    rootDevices:
+    - "0000:65:00.0"
+    - "0000:87:00.0"
+    vendor: "8086"
+    pfNames:
+    - ens1f0
+    - ens7f0 
+  nodeSelector:
+    feature.node.kubernetes.io/network-sriov.capable: "true"
+  numVfs: 8
+  priority: 5
+  resourceName: intelnics0
+EOF
+
+cat <<EOF  | oc create -f -
+apiVersion: sriovnetwork.openshift.io/v1
+kind: SriovNetwork
+metadata:
+  name: sriov-vlan10
+  namespace: openshift-sriov-network-operator
+spec:
+  ipam: "" 
+  resourceName: intelnics0
+  vlan: 10
+  networkNamespace: default
+---
+apiVersion: sriovnetwork.openshift.io/v1
+kind: SriovNetwork
+metadata:
+  name: sriov-vlan20
+  namespace: openshift-sriov-network-operator
+spec:
+  ipam: "" 
+  resourceName: intelnics0
+  vlan: 20
+  networkNamespace: default
+EOF
+```
+
+## Run front haul test from Openshift with FEC hardware acceleration
+
+```
+cat <<EOF  | oc create -f -
+apiVersion: v1 
+kind: Pod 
+metadata:
+  name: flexran-du
+  annotations:
+    k8s.v1.cni.cncf.io/networks: sriov-vlan10,sriov-vlan20
+spec:
+  restartPolicy: Never
+  containers:
+  - name: flexran-du 
+    image: 10.16.231.128:5000/flexran 
+    imagePullPolicy: Always 
+    command:
+      - sleep
+      - "36000" 
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /dev/hugepages
+      name: hugepage
+    - mountPath: /sys
+      name: sys
+    - name: varrun
+      mountPath: /var/run/dpdk
+    resources:
+      limits:
+        hugepages-1Gi: 16Gi
+        memory: 16Gi
+        cpu: 8 
+        intel.com/intel_fec_acc100: '1'
+      requests:
+        hugepages-1Gi: 16Gi
+        memory: 16Gi
+        cpu: 8
+        intel.com/intel_fec_acc100: '1'
   volumes:
   - name: hugepage
     emptyDir:
