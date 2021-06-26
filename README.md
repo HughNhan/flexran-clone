@@ -29,7 +29,7 @@ export MESON_BUILD=1
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
 ```
 
-## Build container image
+## Build container image with everything in
 
 ```
 cd /opt
@@ -37,6 +37,16 @@ curl -L -O https://raw.githubusercontent.com/jianzzha/flexran/master/Dockerfile
 mkdir -p auto
 pushd /opt/auto && curl -L --remote-name-all https://raw.githubusercontent.com/jianzzha/flexran/master/auto/{setup.sh,cpu.py,threads.yaml,phycfg_timer.xml,testmac_cfg.xml} && popd
 podman build -t flexran .
+```
+
+## Build container image with reduced size
+
+```
+cd /opt
+curl -L -O https://raw.githubusercontent.com/jianzzha/flexran/master/Dockerfile.reduced
+mkdir -p auto
+pushd /opt/auto && curl -L --remote-name-all https://raw.githubusercontent.com/jianzzha/flexran/master/auto/{setup.sh,cpu.py,threads.yaml,phycfg_timer.xml,testmac_cfg.xml} && popd
+podman build -t flexran -f Dockerfile.reduced .
 ```
 
 ## Verify flexran container image using podman
