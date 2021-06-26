@@ -1,0 +1,26 @@
+FROM quay.io/centos/centos
+RUN yum install -y libhugetlbfs libhugetlbfs-devel libhugetlbfs-utils numactl-devel vim python3 pciutils iproute && pip3 install pyyaml
+COPY flexran/wls_mod /opt/flexran/wls_mod/
+COPY flexran/libs /opt/flexran/libs/
+COPY flexran/misc /opt/flexran/misc/
+COPY flexran/bin /opt/flexran/bin/
+COPY flexran/xran/app /opt/flexran/xran/app/
+COPY flexran/xran/banner.txt /opt/flexran/xran/
+COPY flexran/xran/build.sh /opt/flexran/xran/
+COPY flexran/xran/lib /opt/flexran/xran/lib/
+COPY flexran/xran/Licenses.txt /opt/flexran/xran/
+COPY flexran/xran/misc /opt/flexran/xran/misc/
+COPY flexran/xran/readme.md /opt/flexran/xran/
+COPY flexran/xran/test /opt/flexran/xran/test/
+COPY flexran/sdk/build-avx512-icc /opt/flexran/sdk/build-avx512-icc/
+COPY dpdk/app /opt/dpdk/app/
+COPY dpdk/devtools /opt/dpdk/devtools/
+COPY dpdk/drivers /opt/dpdk/drivers/
+COPY dpdk/kernel /opt/dpdk/kernel/
+COPY dpdk/lib /opt/dpdk/lib/
+COPY dpdk/license /opt/dpdk/license/
+COPY dpdk/usertools /opt/dpdk/usertools/
+COPY intel/system_studio_2019/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin intel/system_studio_2019/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin intel/system_studio_2019/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin /opt/flexran/icc/
+COPY flexran/tests/nr5g /opt/flexran/tests/nr5g/
+COPY auto /opt/auto
+WORKDIR /opt/auto
