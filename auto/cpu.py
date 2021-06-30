@@ -222,6 +222,24 @@ class Setting:
             for bbuobj in self.l1root.iter(pool["name"]):
                 bbuobj.text = hexstr
 
+    def update_fec(self):
+        fecmode = "0"
+        # the env name starts with PCIDEVICE_INTEL_COM_INTEL_FEC
+        feclist = [ name for name in os.environ.keys() if "PCIDEVICE_INTEL_COM_INTEL_FEC" in name ]
+        if len(feclist) > 0:
+            fecmode = "1"
+            # only use the first from the env
+            pcinum = os.environ[feclist[0]]
+            for fecobj in self.l1root.iter("dpdkBasebandDevice"):
+                fecobj.text = pcinum
+            for fecobj in self.l2root.iter("dpdkBasebandDevice"):
+                fecobj.text = pcinum
+        for modeobj in self.l1root.iter("dpdkBasebandFecMode"):
+            modeobj.text = fecmode
+        for modeobj in self.l2root.iter("dpdkBasebandFecMode"):
+            modeobj.text = fecmode
+
+
     def writel1xml(self, l1file):
         self.l1tree.write(l1file)
 
@@ -267,6 +285,7 @@ def main(name, argv):
     setting.update_l1threads(cpursc)
     setting.update_l2threads(cpursc)
     setting.update_l1bbu(cpursc)
+    setting.update_fec()
     l1output = l1xml
     l2output = l2xml
     if not writeback:
