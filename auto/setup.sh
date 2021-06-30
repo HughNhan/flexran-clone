@@ -7,11 +7,16 @@ if [[ -n "$1" && "$1" == "l2" ]]; then
 	sleep 5
     done
     echo "starting l2"
-    pushd /opt/flexran && source ./set_env_var.sh -d
+    if [[ -e env.src ]]; then
+        source /opt/auto/env.src
+    else
+        pushd /opt/flexran && source ./set_env_var.sh -d
+    fi
     pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh -e
     exit $?
 fi
 
+pip3 install pyyaml
 # protecton starts here 
 set -e
 
@@ -37,7 +42,11 @@ xmllint --format -o phycfg_timer.xml.generated phycfg_timer.xml.out
 set +e
 
 echo "starting l1"
-pushd /opt/flexran && source ./set_env_var.sh -d
+if [[ -e env.src ]]; then
+    source /opt/auto/env.src
+else
+    pushd /opt/flexran && source ./set_env_var.sh -d
+fi
 #tmux new-session -s l1 -d "pushd /opt/flexran/bin/nr5g/gnb/l1; ./l1.sh -e"
 pushd /opt/flexran/bin/nr5g/gnb/l1 && ./l1.sh -e
 exit $?
