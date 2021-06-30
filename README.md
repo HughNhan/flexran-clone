@@ -378,10 +378,6 @@ spec:
       name: hugepage
     - mountPath: /sys
       name: sys
-    - mountPath: /lib/modules
-      name: modules
-    - mountPath: /dev
-      name: dev
     resources:
       limits:
         hugepages-1Gi: 16Gi
@@ -398,12 +394,6 @@ spec:
   - name: sys
     hostPath:
       path: /sys
-  - name: modules
-    hostPath:
-      path: /lib/modules
-  - name: dev
-    hostPath:
-      path: /dev
   nodeSelector:
     node-role.kubernetes.io/worker-cnf: ""
 EOF
