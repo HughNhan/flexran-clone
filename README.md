@@ -21,7 +21,7 @@ cd /opt/flexran && ./extract.sh
 cd /opt && unzip -d flexran FlexRAN-20.11.6_update.zip
 cd /opt/flexran && patch -p1 < FlexRAN-20.11.6_update.patch
 cd /opt/flexran && source ./set_env_var.sh -d
-export RTE_SDK=/opt/dpdk
+sed -r -i -e 's%^#include <linux/bootmem.h>%//#include <linux/bootmem.h>%' /opt/flexran/libs/cpa/sub6/rec/drv/src/nr_dev.c
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk 
 cd /opt/dpdk && meson build
 cd /opt/dpdk/build && meson configure -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
