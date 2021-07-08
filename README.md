@@ -29,29 +29,15 @@ export MESON_BUILD=1
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
 ```
 
-## Build container image with everything in
+## Build container image
 
 ```
-cd /opt
-curl -L -O https://raw.githubusercontent.com/jianzzha/flexran/master/Dockerfile
-mkdir -p auto
-pushd /opt/auto && curl -L --remote-name-all https://raw.githubusercontent.com/jianzzha/flexran/master/auto/{setup.sh,cpu.py,threads.yaml,phycfg_timer.xml,testmac_cfg.xml} && popd
-podman build -t flexran .
-```
-
-## Build container image with reduced size
-
-```
-cd /opt
-curl -L -O https://raw.githubusercontent.com/jianzzha/flexran/master/Dockerfile.reduced
-mkdir -p auto
-pushd /opt/auto && curl -L --remote-name-all https://raw.githubusercontent.com/jianzzha/flexran/master/auto/{setup.sh,cpu.py,threads.yaml,phycfg_timer.xml,testmac_cfg.xml} && popd
-podman build -t flexran -f Dockerfile.reduced .
+sh flexran-container.sh
 ```
 
 ## Verify flexran container image using podman
 
-```podman run --name flexran -d --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest sleep infinity```
+```podman run --name flexran -d --privileged --cpuset-cpus 4,6,8,10,12,14,16,18 --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev,destination=/dev' flexran sleep infinity```
 
 From terminal 1, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh```. This will drop into the  PHY console.
 

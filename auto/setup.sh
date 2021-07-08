@@ -8,7 +8,7 @@ if [[ -n "$1" && "$1" == "l2" ]]; then
     done
     echo "starting l2"
     if [[ -e env.src ]]; then
-        source /opt/auto/env.src
+        source ./env.src
     else
         pushd /opt/flexran && source ./set_env_var.sh -d
     fi
@@ -43,7 +43,7 @@ set +e
 
 echo "starting l1"
 if [[ -e env.src ]]; then
-    source /opt/auto/env.src
+    source ./env.src
 else
     pushd /opt/flexran && source ./set_env_var.sh -d
 fi
