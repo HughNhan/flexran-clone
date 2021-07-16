@@ -3,16 +3,15 @@ L1:
   -
     - name: systemThread
       pri: 0
+    - name: FpgaDriverCpuInfo
+      pri: 6
+    - name: FrontHaulCpuInfo
+      pri: 6
   -
     - name: timerThread
       pri: 6
     - name: radioDpdkMaster
       pri: 9
-  -
-    - name: FpgaDriverCpuInfo
-      pri: 6
-    - name: FrontHaulCpuInfo
-      pri: 6
   BbuPools:
   - name: BbuPoolThreadDefault_0_63
     low: 0
@@ -28,6 +27,17 @@ L2:
       pri: 0
     - name: runThread
       pri: 4
-  -
     - name: urllcThread
       pri: 5
+XRAN:
+  Threads:
+  -
+    - name: xRANThread
+      pri: 6
+  Workers:
+  - name: xRANWorker
+    threads: 1
+    pri: 6
+Testfile:
+  Cores: 4
+
