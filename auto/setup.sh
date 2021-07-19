@@ -97,7 +97,6 @@ elif [[ "$1" == "l1-xran" ]]; then
     ./cpu.py --l1xml /opt/flexran/bin/nr5g/gnb/l1/phycfg_xran.xml --l2xml /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml --xrancfg /opt/flexran/bin/nr5g/gnb/l1/xrancfg_sub6.xml --testfile=${testfile} --cfg threads.yaml
     xmllint --format -o phycfg_xran.xml.generated phycfg_xran.xml.out
     sed -i -r 's/^(\s+)<dpdkMemorySize>.+/\1<dpdkMemorySize>6144<\/dpdkMemorySize>/' phycfg_xran.xml.generated
-    sed -i -r 's/^(\s+)<BbuPoolThreadCorePriority>.+/\1<BbuPoolThreadCorePriority>4<\/BbuPoolThreadCorePriority>/' phycfg_xran.xml.generated
     /bin/cp -f phycfg_xran.xml.generated /opt/flexran/bin/nr5g/gnb/l1/phycfg_xran.xml
     xmllint --format -o testmac_cfg.xml.generated testmac_cfg.xml.out
     /bin/cp -f testmac_cfg.xml.generated /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml
@@ -120,7 +119,6 @@ elif [[ "$1" == "l1-timer" ]]; then
     xmllint --format -o testmac_cfg.xml.generated testmac_cfg.xml.out 
     xmllint --format -o phycfg_timer.xml.generated phycfg_timer.xml.out
     sed -i -r 's/^(\s+)<dpdkMemorySize>.+/\1<dpdkMemorySize>6144<\/dpdkMemorySize>/' phycfg_timer.xml.generated 
-    sed -i -r 's/^(\s+)<BbuPoolThreadCorePriority>.+/\1<BbuPoolThreadCorePriority>4<\/BbuPoolThreadCorePriority>/' phycfg_timer.xml.generated
     # overwrite
     /bin/cp -f testmac_cfg.xml.generated /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml
     /bin/cp -f phycfg_timer.xml.generated /opt/flexran/bin/nr5g/gnb/l1/phycfg_timer.xml

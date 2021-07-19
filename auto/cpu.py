@@ -9,7 +9,7 @@ cputopology = '/sys/devices/system/cpu'
 procstatus = '/proc/self/status'
 timer_l1_xml_default = '/opt/flexran/bin/nr5g/gnb/l1/phycfg_timer.xml'
 timer_l2_xml_default = '/opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml'
-
+    
 def getcpulist(value):
     siblingslist = []
     for item in value.split(','):
@@ -161,7 +161,8 @@ class Setting:
             self.doc = yaml.load(f)
             self.l1threads  = self.doc["L1"]["Threads"]
             print(self.l1threads)
-            self.l1bbu = self.doc["L1"]["BbuPools"]
+            self.bbu_pools = self.doc["L1"]["Bbu"]["BbuPools"]
+            self.bbu_priority = int(self.doc["L1"]["Bbu"]["BbuPoolThreadCorePriority"])
             self.l2threads = self.doc["L2"]["Threads"]
             print(self.l2threads)
             self.xran_threads = self.doc["XRAN"]["Threads"]
@@ -219,7 +220,7 @@ class Setting:
         self._update_threads(rsc, self.xrancfg_root, self.xran_threads)
 
     def update_l1bbu(self, rsc):
-        for pool in self.l1bbu:
+        for pool in self.bbu_pools:
             v = 0
             try:
                 bbu_threads = int(pool['threads'])
@@ -235,6 +236,10 @@ class Setting:
             hexstr = hex(v)
             for bbuobj in self.l1root.iter(pool["name"]):
                 bbuobj.text = hexstr
+
+    def update_bbu_priority(self):
+        for pri_obj in self.l1root.iter("BbuPoolThreadCorePriority"):
+            pri_obj.text = str(self.bbu_priority)
 
     def update_xran_workers(self, rsc):
         for worker in self.xran_workers:
@@ -281,14 +286,14 @@ class Setting:
             modeobj.text = fecmode
 
     def update_eth(self):
-        sriov_list = [ name for name in os.environ.keys() if "PCIDEVICE_OPENSHIFT_IO_" in name ]
-        if len(sriov_list) > 0:
-            pci_addr0 = os.environ[sriov_list[0]].split(',')[0]
-            for sriov_obj in self.xrancfg_root.iter("PciBusAddoRu0Vf0"):
-                sriov_obj.text = pci_addr0
-            pci_addr1 = os.environ[sriov_list[0]].split(',')[1]
-            for sriov_obj in self.xrancfg_root.iter("PciBusAddoRu0Vf1"):
-                sriov_obj.text = pci_addr1
+        l = [ name for name in os.environ.keys() if "PCIDEVICE_OPENSHIFT_IO_" in name ]
+        i = 0
+        for comma_str in l:
+            pci_list = os.environ[comma_str].split(',')
+            for pci in pci_list:
+                for sriov_obj in self.xrancfg_root.iter("PciBusAddoRu0Vf%d"%i):
+                    sriov_obj.text = pci
+                i += 1
 
     def writel1xml(self, l1file):
         self.l1tree.write(l1file)
@@ -362,6 +367,7 @@ def main(name, argv):
     setting.update_l1threads(cpursc)
     setting.update_l2threads(cpursc)
     setting.update_l1bbu(cpursc)
+    setting.update_bbu_priority()
     setting.update_fec()
     l1output = l1xml
     l2output = l2xml

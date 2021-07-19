@@ -12,11 +12,13 @@ L1:
       pri: 6
     - name: radioDpdkMaster
       pri: 9
-  BbuPools:
-  - name: BbuPoolThreadDefault_0_63
-    low: 0
-    high: 63
-    threads: 2 
+  Bbu:
+    BbuPoolThreadCorePriority: 4
+    BbuPools:
+    - name: BbuPoolThreadDefault_0_63
+      low: 0
+      high: 63
+      threads: 2 
 L2:
   Threads:
   -
