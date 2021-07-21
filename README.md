@@ -35,16 +35,19 @@ cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
 sh flexran-container.sh
 ```
 
+The script will build a container image "flexran".
+
+ 
 ## Verify flexran container image using podman
 
 ```podman run --name flexran -d --privileged --cpuset-cpus 4,6,8,10,12,14,16,18 --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev,destination=/dev' flexran sleep infinity```
 
-From terminal 1, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh```. This will drop into the  PHY console.
+From terminal 1, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l1-timer```. This will drop into the  PHY console.
 
 Or instead of running the pod in deamon mode, one can directly drop into the PHY console in this way:
-```podman run --name flexran -it --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest ./setup.sh```
+```podman run --name flexran -it --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest ./setup.sh l1-timer```
 
-From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l2```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
+From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l2-timer```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
 
 # Running Flexran from Openshift
 
@@ -340,7 +343,7 @@ done
 oc get node worker1 -o json | jq -r '.status.capacity' 
 ```
 
-## Run flexran local test from Openshift with software FEC
+## Run flexran timer test suite from Openshift with software FEC
 
 ```
 cat <<EOF  | oc create -f -
@@ -385,9 +388,9 @@ spec:
 EOF
 ```
 
-After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh```.
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-timer```.
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
+on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-timer```. From the TESTMAC console, execute ```runall 0``` to start the test.
 
 To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
 on the worker node,
@@ -395,7 +398,7 @@ on the worker node,
 for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
 ```
 
-## Run flexran local test from Openshift with FEC hardware acceleration
+## Run flexran timer test suite from Openshift with FEC hardware acceleration
 
 ```
 cat <<EOF  | oc create -f -
@@ -448,9 +451,9 @@ EOF
 
 To use acc100, replace intel_fec_5g with intel_fec_acc100 in the above yaml.
 
-After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh```.
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-timer```.
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2```. From the TESTMAC console, execute ```runall 0``` to start the test.
+on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-timer```. From the TESTMAC console, execute ```runall 0``` to start the test.
 
 To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
 on the worker node,
@@ -659,7 +662,7 @@ spec:
 EOF
 ```
 
-## Run front haul test from Openshift with FEC hardware acceleration
+## Run flexran xran test suite from Openshift with FEC hardware acceleration
 
 ```
 cat <<EOF  | oc create -f -
@@ -710,4 +713,14 @@ spec:
   nodeSelector:
     node-role.kubernetes.io/worker-cnf: ""
 EOF
+```
+
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-xran```.
+
+on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-xran```. This will automatically start the test suite.
+
+To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
+on the worker node,
+```
+for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
 ```
