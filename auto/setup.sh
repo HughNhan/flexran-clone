@@ -63,11 +63,15 @@ if [[ -z "$1" ]]; then
     exit 1
 fi
 
-if [[ "$1" == "l2-xran" ]]; then
-    if [[ -z "${testfile}" ]]; then
-        echo "env var: testfile not specified!"
+testfile=`pwd`/${testfile:-cascade_lake_mu0_20mhz_6cell.cfg}
+if [[ ! -e "${testfile}" ]]; then
+    if [[ "$1" == "l2-xran" || "$1" == "l1-xran" ]]; then
+        echo "testfile ${testfile} not exists!"
         exit 1
-    fi 
+    fi
+fi
+
+if [[ "$1" == "l2-xran" ]]; then
     wait_l1    
     pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh --testfile=${testfile} 
 elif [[ "$1" == "l2-timer" ]]; then
@@ -75,10 +79,6 @@ elif [[ "$1" == "l2-timer" ]]; then
     echo "starting l2"
     pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh -e
 elif [[ "$1" == "l1-xran" ]]; then
-    if [[ -z "${testfile}" ]]; then
-        echo "env var: testfile not specified!"
-        exit 1
-    fi 
     adjust_kthreads
     vf_pci=$(env | sed  -r -n 's/^PCIDEVICE_OPENSHIFT_IO.*=([0-9a-fA-F\:\.]+).*/\1/p')
     if [ -z "${vf_pci}" ]; then

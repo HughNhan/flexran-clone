@@ -18,7 +18,7 @@ L1:
     - name: BbuPoolThreadDefault_0_63
       low: 0
       high: 63
-      threads: 2 
+      threads: 0 
 L2:
   Threads:
   -
@@ -32,14 +32,8 @@ L2:
     - name: urllcThread
       pri: 5
 XRAN:
-  Threads:
-  -
-    - name: xRANThread
-      pri: 6
-  Workers:
-  - name: xRANWorker
-    threads: 1
-    pri: 6
+  Threads: {}
+  Workers: {}
 Testfile:
-  Cores: 4
+  Cores: 6
 
