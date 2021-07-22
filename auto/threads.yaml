@@ -32,8 +32,14 @@ L2:
     - name: urllcThread
       pri: 5
 XRAN:
-  Threads: {}
-  Workers: {}
+  Threads:
+  -
+    - name: xRANThread
+      pri: 6
+  Workers:
+  - name: xRANWorker
+    threads: 1
+    pri: 6
 Testfile:
   Cores: 6
 
