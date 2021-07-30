@@ -1,4 +1,4 @@
-# Build flexran container image
+# Run FlexRAN test suites in OpenShift 
 
 ## Compile flexran
 
@@ -42,21 +42,36 @@ The script will build a container image "flexran".
 
 ```podman run --name flexran -d --privileged --cpuset-cpus 4,6,8,10,12,14,16,18 --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev,destination=/dev' flexran sleep infinity```
 
-From terminal 1, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l1-timer```. This will drop into the  PHY console.
+From terminal 1, run ```podman exec -it flexran sh```. To run test suites in timer mode, the entry point for l1app is /opt/flexran/bin/nr5g/gnb/l1/l1.sh. This script will drop into the PHY console. Before running this script, one must update the settings in phycfg_timer.xml. The following xml fields need to be updated,
+* DPDK/dpdkBasebandFecMode
+* DPDK/dpdkBasebandDevice
+* Threads/{systemThread,timerThread}
 
-Or instead of running the pod in deamon mode, one can directly drop into the PHY console in this way:
-```podman run --name flexran -it --cap-add SYS_ADMIN --cap-add IPC_LOCK --cap-add SYS_NICE --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev/hugepages,destination=/dev/hugepages' flexran:latest ./setup.sh l1-timer```
+There are comments in the xml file to explain the purpose of these fields.  
 
-From terminal 2, run ```podman exec -it flexran sh```. The start directory is /opt/auto, run ```./setup.sh l2-timer```. This will drop into the TESTMAC console. From the console, do ```runall 0``` to kick off the test.
+From terminal 2, run ```podman exec -it flexran sh```. The entry point for testmac is /opt/flexran/bin/nr5g/gnb/testmac/l2.sh. This script will drop into the testmac console. Before running this script, one must update the settings in testmac_cfg.xml. The following xml fields need to be updated,
+* Threads/{wlsRxThread,systemThread,runThread}
 
-# Running Flexran from Openshift
+There are comments in the xml file to explain the purpose of these fields.
 
-## Install performance-addon operator
+To start the actual test, in the testmac console, `runall 0`
+
+
+## OpenShift FlexRAN test topology
+
+![test topology](https://docs.google.com/drawings/d/e/2PACX-1vRWU499sFr2jgnzafd8NlSMGo-eHWDef9fzB6Ivzme-6KAsLZvC3ckBgCzA7nV-YlZJcLRMdCWOsW5e/pub?w=960&h=720)
+
+## add labels to the worker node
 
 ```
 oc label --overwrite node worker1 node-role.kubernetes.io/worker-cnf=""
 oc label --overwrite node worker1 feature.node.kubernetes.io/network-sriov.capable=true
+oc label node worker1 fpga.intel.com/intel-accelerator-present=""
+```
 
+## Install performance-addon operator
+
+```
 cat <<EOF  | oc create -f -
 apiVersion: v1
 kind: Namespace
@@ -77,7 +92,7 @@ metadata:
   name: performance-addon-operator
   namespace: openshift-performance-addon
 spec:
-  channel: "4.6"
+  channel: "${OCP_CHANNEL_NUM}"
   name: performance-addon-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
@@ -89,6 +104,7 @@ while ! oc get pods -n openshift-performance-addon | grep Running; do
 done
 
 cat <<EOF  | oc create -f -
+apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfigPool
 metadata:
   name: worker-cnf
@@ -284,7 +300,7 @@ spec:
 EOF
 
 # matching: worker1   Succeeded
-while oc get sriovfecnodeconfigs | grep Succeeded; do
+while oc get sriovfecnodeconfigs -n vran-acceleration-operators | grep Succeeded; do
     echo "waiting for sriovfecnodeconfigs succeeded"
     sleep 5
 done
@@ -334,7 +350,7 @@ spec:
 EOF
 
 # matching: worker1   Succeeded
-while oc get sriovfecnodeconfigs | grep Succeeded; do
+while oc get sriovfecnodeconfigs -n vran-acceleration-operators | grep Succeeded; do
     echo "waiting for sriovfecnodeconfigs succeeded"
     sleep 5
 done
@@ -388,15 +404,20 @@ spec:
 EOF
 ```
 
-After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-timer```.
+From terminal 1, run ```oc exec -it flexran sh```. To run test suites in timer mode, the entry point for l1app is /opt/flexran/bin/nr5g/gnb/l1/l1.sh. This script will drop into the PHY console. Before running this script, one must update the settings in phycfg_timer.xml. The following xml fields need to be updated,
+* DPDK/dpdkBasebandFecMode
+* DPDK/dpdkBasebandDevice
+* Threads/{systemThread,timerThread}
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-timer```. From the TESTMAC console, execute ```runall 0``` to start the test.
+There are comments in the xml file to explain the purpose of these fields.  
 
-To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
-on the worker node,
-```
-for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
-```
+From terminal 2, run ```oc exec -it flexran sh```. The entry point for testmac is /opt/flexran/bin/nr5g/gnb/testmac/l2.sh. This script will drop into the testmac console. Before running this script, one must update the settings in testmac_cfg.xml. The following xml fields need to be updated,
+* Threads/{wlsRxThread,systemThread,runThread}
+
+There are comments in the xml file to explain the purpose of these fields.
+
+To start the actual test, in the testmac console, `runall 0`
+
 
 ## Run flexran timer test suite from Openshift with FEC hardware acceleration
 
@@ -451,17 +472,14 @@ EOF
 
 To use acc100, replace intel_fec_5g with intel_fec_acc100 in the above yaml.
 
-After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-timer```.
+Once the pod is started, modify the config xml files and run l1.sh and l2.sh as illustrated earlier. 
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-timer```. From the TESTMAC console, execute ```runall 0``` to start the test.
 
-To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
-on the worker node,
-```
-for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
-```
+## Run xran test suite from Openshift with FEC hardware acceleration
 
-## Disable chronyd
+In addition to enabling the operators mentioned in the timer mode testing, the following additional steps are required.
+
+### Disable chronyd
 
 ```
 cat <<EOF  | oc create -f -
@@ -503,7 +521,7 @@ spec:
 EOF
 ```
 
-## Enable ptp
+### Enable ptp
 
 ```
 cat <<EOF  | oc create -f -
@@ -531,7 +549,7 @@ metadata:
   name: ptp-operator-subscription
   namespace: openshift-ptp
 spec:
-  channel: "4.6"
+  channel: "${OCP_CHANNEL_NUM}"
   name: ptp-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
@@ -575,7 +593,7 @@ ptp4l[203559.163]: rms    2 max    3 freq   -132 +/-   1 delay  1507 +/-   0
 phc2sys[203559.678]: CLOCK_REALTIME rms    2 max    2 freq  +6736 +/-   0 delay   573 +/-   0
 ```
 
-## Create SRIOV VFs for front haul link
+### Create SRIOV VFs on front haul link
 
 ```
 cat <<EOF  | oc create -f -
@@ -601,7 +619,7 @@ metadata:
   name: sriov-network-operator-subsription
   namespace: openshift-sriov-network-operator
 spec:
-  channel: "4.6"
+  channel: "${OCP_CHANNEL_NUM}"
   name: sriov-network-operator
   source: redhat-operators 
   sourceNamespace: openshift-marketplace
@@ -662,7 +680,7 @@ spec:
 EOF
 ```
 
-## Run flexran xran test suite from Openshift with FEC hardware acceleration
+### Run flexran test pod with FEC hardware acceleration
 
 ```
 cat <<EOF  | oc create -f -
@@ -715,12 +733,71 @@ spec:
 EOF
 ```
 
-After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. This will start in /opt/auto directory. Kickoff the PHY by ```./setup.sh l1-xran```.
+### Simulate RU 
 
-on terminal 2 run ```oc exec -it flexran sh```. This will start in /opt/auto directory. Kick off the TESTMAC by ```./setup.sh l2-xran```. This will automatically start the test suite.
+On the RU server (the server on the right in the topology diagram), create 2 VFs,
+```
+echo 2 > /sys/class/net/${RU_ETH}/device/sriov_numvfs
+ip link set dev ${RU_ETH} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
+ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off 
+```
 
-To prevent the worker node from stalling during the test, two enviroment variables are supported. To raise the rcuc priority to 20 and ksoftirqd to 11, in the pod yaml env section, set rcuc=20 and ksoftirqd=11. Or one can manually set the ksoftirqd
-on the worker node,
+Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
+
+In run_o_ru.sh, update --vf_addr_o_xu_a with the pci address of the two VF created.
+
+In usecase_ru.cfg, 
+* ioCore
+* ioWorker
+* oXuRem0Mac0, oXuRem0Mac1: DU's VF mac address
+
+In config_file_o_ru.dat,
+* duMac0, duMac1: DU's VF mac address
+
+To start the RU,
 ```
-for p in `pgrep ksoftirqd`; do chrt -f --pid 11 $p; done
+cd /opt/flexran && source ./set_env_var.sh -d
+cd bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru
+./run_o_ru.sh
 ```
+
+### Run xran test suite from the flexran pod
+
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/ and update phycfg_xran.xml and xrancfg_sub6_oru.xml as illustrated below.
+
+In phycfg_xran.xml, the following fields need to be updated:
+* DPDK/dpdkBasebandFecMode: 1 if using HW FEC
+* DPDK/dpdkBasebandDevice: HW FEC pci address based on value of env var PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
+* Threads: same rule as phycfg_timer.xml applies
+
+In xrancfg_sub6_oru.xml, the following fields need to be updated:
+* PciBusAddoRu0Vf0,PciBusAddoRu0Vf1: SRIOV VF pci address based on value of env var PCIDEVICE_OPENSHIFT_IO_INTELNICS0
+* oRuRem0Mac0, oRuRem0Mac1: remote RU's corresponding VF mac address
+* xRANThread: allocate a new cpu thread and put down the cpu id
+* xRANWorker: allocate a new cpu thread and put down the cpu mask
+
+Go to directory /opt/flexran/bin/nr5g/gnb/testmac, update testmac_cfg.xml as illustrated below.
+
+In testmac_cfg.xml, the following fields need to be updated:
+* Threads: same rule as testmac_cfg.xml for timer mode
+
+copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_mu0_20mhz_hton_oru.cfg to /opt/flexran/bin/nr5g/gnb/testmac, and update this file:
+* phystart: 4 0 100007
+* setcore
+
+After these change are made, start the l1app by 
+```
+source /opt/flexran/auto/env.src
+/opt/flexran/auto/driver.sh vfio  # this will make sure the driver is vfio bound
+cd /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/
+./l1.sh -oru
+```
+
+on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by 
+```
+cd /opt/flexran/bin/nr5g/gnb/testmac
+source /opt/flexran/auto/env.src
+./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg
+``` 
+
+This will automatically start the test suite.
