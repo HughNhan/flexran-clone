@@ -39,4 +39,3 @@
 
 ### directory of pod
 Files scripts will be copied to flexran pod
-   
