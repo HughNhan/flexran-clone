@@ -63,15 +63,12 @@ if [[ -z "$1" ]]; then
     exit 1
 fi
 
-testfile=`pwd`/${testfile:-cascade_lake_mu0_20mhz_6cell.cfg}
-if [[ ! -e "${testfile}" ]]; then
-    if [[ "$1" == "l2-xran" || "$1" == "l1-xran" ]]; then
+if [[ "$1" == "l2-xran" ]]; then
+    testfile=`pwd`/${testfile:-cascade_lake_mu0_20mhz_6cell.cfg}
+    if [[ ! -e "${testfile}" ]]; then
         echo "testfile ${testfile} not exists!"
         exit 1
     fi
-fi
-
-if [[ "$1" == "l2-xran" ]]; then
     wait_l1    
     pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh --testfile=${testfile} 
 elif [[ "$1" == "l2-timer" ]]; then
@@ -79,6 +76,11 @@ elif [[ "$1" == "l2-timer" ]]; then
     echo "starting l2"
     pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh -e
 elif [[ "$1" == "l1-xran" ]]; then
+    testfile=`pwd`/${testfile:-cascade_lake_mu0_20mhz_6cell.cfg}
+    if [[ ! -e "${testfile}" ]]; then
+        echo "testfile ${testfile} not exists!"
+        exit 1
+    fi
     adjust_kthreads
     vf_pci=$(env | sed  -r -n 's/^PCIDEVICE_OPENSHIFT_IO.*=([0-9a-fA-F\:\.]+).*/\1/p')
     if [ -z "${vf_pci}" ]; then
@@ -93,7 +95,7 @@ elif [[ "$1" == "l1-xran" ]]; then
     sed  -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' /opt/flexran/bin/nr5g/gnb/l1/phycfg_xran.xml
     sed  -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml
     sed -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' /opt/flexran/bin/nr5g/gnb/l1/xrancfg_sub6.xml
-    echo "starting l1"
+    echo "mapping cpus"
     ./cpu.py --l1xml /opt/flexran/bin/nr5g/gnb/l1/phycfg_xran.xml --l2xml /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml --xrancfg /opt/flexran/bin/nr5g/gnb/l1/xrancfg_sub6.xml --testfile=${testfile} --cfg threads.yaml
     xmllint --format -o phycfg_xran.xml.generated phycfg_xran.xml.out
     sed -i -r 's/^(\s+)<dpdkMemorySize>.+/\1<dpdkMemorySize>6144<\/dpdkMemorySize>/' phycfg_xran.xml.generated
@@ -102,12 +104,63 @@ elif [[ "$1" == "l1-xran" ]]; then
     /bin/cp -f testmac_cfg.xml.generated /opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml
     xmllint --format -o xrancfg_sub6.xml.generated xrancfg_sub6.xml.out
     /bin/cp -f xrancfg_sub6.xml.generated /opt/flexran/bin/nr5g/gnb/l1/xrancfg_sub6.xml
+    echo "starting l1"
     pushd /opt/flexran/bin/nr5g/gnb/l1 && ./l1.sh -xran
     # rebind ${vf_pci} to kernel driver
-    if [[ -n "${kernel_driver_path}" ]]; then
-        bind_kernel_driver
+    #if [[ -n "${kernel_driver_path}" ]]; then
+    #    bind_kernel_driver
+    #fi
+
+elif [[ "$1" == "l1-fh" ]]; then
+    testfile=`pwd`/${testfile:-clxsp_mu0_20mhz_oru.cfg}
+    if [[ ! -e "${testfile}" ]]; then
+        echo "testfile ${testfile} not exists!"
+        exit 1
     fi
- 
+    adjust_kthreads
+    vf_pci=$(env | sed  -r -n 's/^PCIDEVICE_OPENSHIFT_IO.*=([0-9a-fA-F\:\.]+).*/\1/p')
+    if [ -z "${vf_pci}" ]; then
+       echo "No VF is set via PCIDEVICE_OPENSHIFT_IO, is this a openshift pod?"
+       exit 1
+    fi
+
+    # unbound VF from kernel and rebind to dpdk driver
+    bind_vfio
+
+    echo "fixing xml files"
+    l1xml=/opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/phycfg_xran.xml
+    l2xml=/opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml
+    xranxml=/opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/xrancfg_sub6_oru.xml
+    sed  -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' ${l1xml} 
+    sed  -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' ${l2xml} 
+    sed -i -r 's/^(\s+)<(\w+)>(.+)<.+/\1<\2>\3<\/\2>/' ${xranxml}
+    # 1 cell only 
+    sed -i -r 's/^(\s+)<oRu0NumCc>(.+)<\/oRu0NumCc>/\1<oRu0NumCc>1<\/oRu0NumCc>/' ${xranxml}
+    echo "mapping cpus"
+    ./cpu.py --l1xml ${l1xml} --l2xml ${l2xml} --xrancfg ${xranxml} --testfile=${testfile} --cfg threads.yaml
+    xmllint --format -o phycfg_xran.xml.generated `basename ${l1xml}`.out
+    sed -i -r 's/^(\s+)<dpdkMemorySize>.+/\1<dpdkMemorySize>6144<\/dpdkMemorySize>/' phycfg_xran.xml.generated
+    /bin/cp -f phycfg_xran.xml.generated ${l1xml}
+    xmllint --format -o testmac_cfg.xml.generated `basename ${l2xml}`.out
+    /bin/cp -f testmac_cfg.xml.generated ${l2xml} 
+    xmllint --format -o xrancfg_sub6.xml.generated `basename ${xranxml}`.out
+    /bin/cp -f xrancfg_sub6.xml.generated ${xranxml}
+    echo "starting l1" 
+    pushd `dirname ${l1xml}` && ./l1.sh -oru
+    # rebind ${vf_pci} to kernel driver
+    #if [[ -n "${kernel_driver_path}" ]]; then
+    #    bind_kernel_driver
+    #fi
+
+elif [[ "$1" == "l2-fh" ]]; then
+    testfile=`pwd`/${testfile:-clxsp_mu0_20mhz_oru.cfg}
+    if [[ ! -e "${testfile}" ]]; then
+        echo "testfile ${testfile} not exists!"
+        exit 1
+    fi
+    wait_l1   
+    pushd /opt/flexran/bin/nr5g/gnb/testmac && ./l2.sh --testfile=${testfile} 
+
 elif [[ "$1" == "l1-timer" ]]; then
     adjust_kthreads
     echo "fixing xml files"
