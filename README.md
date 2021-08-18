@@ -801,3 +801,20 @@ source /opt/flexran/auto/env.src
 ``` 
 
 This will automatically start the test suite.
+
+## Simulate RU from baremetal machine
+
+```
+cd bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru
+./run_o_ru.sh
+```
+
+In order to send packets onto the ethernet port, in run_o_ru.sh, --vf_addr_o_xu_a need to be set to the local ethernet PCI address on the RU server; in usecase_ru.cfg, oXuRem0Mac0 and oXuRem0Mac1 need to be set to the mac address of the DU ethernet ports.
+
+## Run front haul test from the flexran pod
+
+After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. Under auto directory, kickoff the PHY by ```./setup.sh l1-fh```.
+
+on terminal 2 run ```oc exec -it flexran sh```. Under auto directory, kick off the front haul test by ```./setup.sh l2-fh```. This will automatically start the test suite.
+
+Both RU and DU should see the inbound packets from the ethernet ports.
