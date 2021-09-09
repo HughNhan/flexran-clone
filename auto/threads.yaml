@@ -1,45 +1,27 @@
-L1:
-  Threads:
-  -
-    - name: systemThread
-      pri: 0
-    - name: FpgaDriverCpuInfo
-      pri: 6
-    - name: FrontHaulCpuInfo
-      pri: 6
-  -
-    - name: timerThread
-      pri: 6
-    - name: radioDpdkMaster
-      pri: 9
-  Bbu:
-    BbuPoolThreadCorePriority: 4
-    BbuPools:
-    - name: BbuPoolThreadDefault_0_63
-      low: 0
-      high: 63
-      threads: 0 
-L2:
-  Threads:
-  -
-    - name: wlsRxThread
-      pri: 5
-  -
-    - name: systemThread
-      pri: 0
-    - name: runThread
-      pri: 4
-    - name: urllcThread
-      pri: 5
-XRAN:
-  Threads:
-  -
-    - name: xRANThread
-      pri: 6
-  Workers:
-  - name: xRANWorker
-    threads: 1
-    pri: 6
-Testfile:
-  Cores: 6
+Threads:
+  1:
+    phycfg_timer:
+      systemThread:
+        pri: 0
+      FpgaDriverCpuInfo:
+        pri: 0
+      FrontHaulCpuInfo:
+        pri: 0
+    testmac_cfg:
+      systemThread:
+        pri: 0
+      runThread:
+        pri: 89
+      urllcThread:
+        pri: 90
+  2:
+    phycfg_timer:
+      timerThread:
+        pri: 96 
+      radioDpdkMaster:
+        pri: 99
+  3:
+    testmac_cfg:
+      wlsRxThread:
+        pri: 90
 

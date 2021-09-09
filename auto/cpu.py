@@ -7,8 +7,6 @@ import xml.etree.ElementTree as ET
 cpuinfo = '/proc/cpuinfo'
 cputopology = '/sys/devices/system/cpu'
 procstatus = '/proc/self/status'
-timer_l1_xml_default = '/opt/flexran/bin/nr5g/gnb/l1/phycfg_timer.xml'
-timer_l2_xml_default = '/opt/flexran/bin/nr5g/gnb/testmac/testmac_cfg.xml'
     
 def getcpulist(value):
     siblingslist = []
@@ -133,6 +131,30 @@ class CpuResource:
             sys.exit("failed to allocate cpu")
         return cpu
 
+    # allocate one thread, and remove its sibling thread from available list
+    def allocate_whole_core(self):
+        cpu = self.allocateone()
+        siblings = cpuinfo.threadsibling(cpu)
+        for s in siblings:
+            self.available.remove(s)
+        return cpu
+
+    def allocate_siblings(self, num):
+        cpus = []
+        while (num > 0):
+            cpu = self.allocateone()
+            cpus.append(cpu)
+            num -= 1
+            if (num == 0):
+                break
+            siblings = cpuinfo.threadsibling(cpu)
+            for s in siblings:
+                if s in self.available:
+                    self.available.remove(s)
+                    cpus.append(s)
+                    num -= 1
+        return cpus
+
     # specify the list of cpu to remove from available list
     def remove(self, l):
         self.available.remove(l)
@@ -155,189 +177,33 @@ class CpuResource:
         return cpus
 
 class Setting:
-    def __init__(self, cfg, l1cfgfile, l2cfgfile, xrancfg_file):
+    def __init__(self, cfg):
         try:
             f = open(cfg, 'r')
-            self.doc = yaml.load(f)
-            self.l1threads  = self.doc["L1"]["Threads"]
-            print(self.l1threads)
-            self.bbu_pools = self.doc["L1"]["Bbu"]["BbuPools"]
-            self.bbu_priority = int(self.doc["L1"]["Bbu"]["BbuPoolThreadCorePriority"])
-            self.l2threads = self.doc["L2"]["Threads"]
-            print(self.l2threads)
-            self.xran_threads = self.doc["XRAN"]["Threads"]
-            self.xran_workers = self.doc["XRAN"]["Workers"]
-            self.testfile_cores = int(self.doc["Testfile"]["Cores"])
-            print(self.xran_threads)
+            self.cfg = yaml.load(f)
             f.close()
         except:
             sys.exit("can't process %s" %(cfg))
-        try:
-            self.l1tree = ET.parse(l1cfgfile)
-            self.l1root = self.l1tree.getroot()
-        except:
-            sys.exit("can't process %s" %(l1cfgfile))
-        try:
-            self.l2tree = ET.parse(l2cfgfile)
-            self.l2root = self.l2tree.getroot()
-        except:
-            sys.exit("can't process %s" %(l2cfgfile))
-        if (xrancfg_file is not None):
-            try:
-                self.xrancfg_tree = ET.parse(xrancfg_file)
-                self.xrancfg_root = self.xrancfg_tree.getroot()
-            except:
-                sys.exit("can't process %s" %(xrancfg_file))
 
-
-    def _update_threads(self, rsc, root, threads):
-        for l in threads:
-            print(rsc.available)
-            cpu = rsc.allocateone()
-            for thread in l:
-                overwrite = False
-                if "pri" in thread:
-                    overwrite = True
-                    pri = thread['pri']
-                for threadobj in root.iter(thread["name"]):
-                    text = threadobj.text
-                    # replace text with new cpu and priority
-                    print("for thread %s, allocate cpu %s\n" %(thread["name"], cpu))
-                    strlist = re.split(', *', text)
-                    strlist[0] = str(cpu)
-                    if overwrite:
-                        strlist[1] = str(pri)
-                    text = ",".join(strlist)
-                    threadobj.text = text
-        
-    def update_l1threads(self, rsc):
-        self._update_threads(rsc, self.l1root, self.l1threads)
-
-    def update_l2threads(self, rsc):
-        self._update_threads(rsc, self.l2root, self.l2threads)
-
-    def update_xranthreads(self, rsc):
-        self._update_threads(rsc, self.xrancfg_root, self.xran_threads)
-
-    def update_l1bbu(self, rsc):
-        for pool in self.bbu_pools:
-            v = 0
-            try:
-                bbu_threads = int(pool['threads'])
-            except NameError:
-                bbu_threads = 0
-            for i in range(bbu_threads):
-                cpu = rsc.allocate_from_range(pool['low'], pool['high'])
-                if cpu is not None:
-                    v ^= 1<<cpu
-                else:
-                    print("not enough cpu for bbu threads, use whatever available")
-                    break
-            hexstr = hex(v)
-            for bbuobj in self.l1root.iter(pool["name"]):
-                bbuobj.text = hexstr
-
-    def update_bbu_priority(self):
-        for pri_obj in self.l1root.iter("BbuPoolThreadCorePriority"):
-            pri_obj.text = str(self.bbu_priority)
-
-    def update_xran_workers(self, rsc):
-        for worker in self.xran_workers:
-            v = 0
-            try:
-                worker_threads = int(worker['threads'])
-            except NameError:
-                worker_threads = 0
-            for i in range(worker_threads):
-                cpu = rsc.allocateone()
-                if cpu is not None:
-                    v ^= 1<<cpu
-                else:
-                    print("not enough cpu for bbu threads, use whatever available")
-                    break
-            overwrite = False
-            if "pri" in worker:
-                overwrite = True
-                pri = int(worker['pri'])
-            for worker_obj in self.xrancfg_root.iter(worker["name"]):
-                t = worker_obj.text
-                strlist = re.split(', *', t)
-                strlist[0] = hex(v)
-                if overwrite:
-                    strlist[1] = str(pri)
-                t = ",".join(strlist)
-                worker_obj.text = t
-
-    def update_fec(self):
-        fecmode = "0"
-        # the env name starts with PCIDEVICE_INTEL_COM_INTEL_FEC
-        feclist = [ name for name in os.environ.keys() if "PCIDEVICE_INTEL_COM_INTEL_FEC" in name ]
-        if len(feclist) > 0:
-            fecmode = "1"
-            # only use the first from the env
-            pcinum = os.environ[feclist[0]]
-            for fecobj in self.l1root.iter("dpdkBasebandDevice"):
-                fecobj.text = pcinum
-            for fecobj in self.l2root.iter("dpdkBasebandDevice"):
-                fecobj.text = pcinum
-        for modeobj in self.l1root.iter("dpdkBasebandFecMode"):
-            modeobj.text = fecmode
-        for modeobj in self.l2root.iter("dpdkBasebandFecMode"):
-            modeobj.text = fecmode
-
-    def update_eth(self):
-        l = [ name for name in os.environ.keys() if "PCIDEVICE_OPENSHIFT_IO_" in name ]
-        i = 0
-        for comma_str in l:
-            pci_list = os.environ[comma_str].split(',')
-            for pci in pci_list:
-                for sriov_obj in self.xrancfg_root.iter("PciBusAddoRu0Vf%d"%i):
-                    sriov_obj.text = pci
-                i += 1
-
-    def writel1xml(self, l1file):
-        self.l1tree.write(l1file)
-
-    def writel2xml(self, l2file):
-        self.l2tree.write(l2file)
-
-    def write_xrancfg_xml(self, xran_cfg_file):
-        self.xrancfg_tree.write(xran_cfg_file)
+    def update_cfg_files(self):
+        # use self.cfg info to update the config files: phycfg_timer.xml, testmac_cfg.xml
+        # assume these config files exist under the current directory
+        # reference https://docs.google.com/document/d/1CLlfh2pt2eOxwus0gnOXuAnGT9yRYVu0Rrr8wTAP_0I/edit?usp=sharing
 
     def update_testfile(self, rsc, testfile):
-        v = 0
-        for i in range(self.testfile_cores):
-            cpu = rsc.allocateone()
-            if cpu is not None:
-                v ^= 1<<cpu
-            else:
-                print("not enough cpu for bbu threads, use whatever available")
-                break
-        content = ""
-        with open(testfile, 'r') as f:
-            for line in f:
-                content += re.sub(r"^setcore.*", "setcore "+ hex(v) + "\n", line)
-        with open(testfile, 'w') as f:
-            f.write(content)
+	# try to use allocate_siblings to allocate sibling threads
+	# reference https://docs.google.com/document/d/1CLlfh2pt2eOxwus0gnOXuAnGT9yRYVu0Rrr8wTAP_0I/edit?usp=sharing
+        pass
 
 def main(name, argv):
-    l1xml = timer_l1_xml_default
-    l2xml = timer_l2_xml_default
-    xrancfg = None
-    testfile = None
-    writeback = False
     nosibling = False
     cfg = "threads.yaml"
-    helpstr = name + " --l1xml=<l1xml-file-path>"\
-                     " --l2xml=<l2xml-file-path>"\
-                     " --xrancfg=<xrancfg_sub file path>"\
-                     " --testfile=<testfile path>"\
+    helpstr = name + " --testfile=<testfile path>"\
                      " --cfg=<yaml_cfg>"\
-                     " --writeback"\
                      " --nosibling"\
                      "\n"
     try:
-        opts, args = getopt.getopt(argv,"h",["l1xml=","l2xml=", "xrancfg=", "testfile=", "cfg=", "writeback", "nosibling"])
+        opts, args = getopt.getopt(argv,"h",["testfile=", "cfg=", "nosibling"])
     except getopt.GetoptError:
         print(helpstr)
         sys.exit(2)
@@ -346,49 +212,15 @@ def main(name, argv):
         if opt == '-h':
             print(helpstr)
             sys.exit()
-        elif opt in ("--l1xml"):
-            l1xml = arg
-        elif opt in ("--l2xml"):
-            l2xml = arg
-        elif opt in ("--xrancfg"):
-            xrancfg = arg
         elif opt in ("--testfile"):
             testfile = arg
         elif opt in ("--cfg"):
             cfg = arg
-        elif opt in ("--writeback"):
-            writeback = True
-        elif opt in ("--allow-sibling"):
-            allow_sibling = True
+        elif opt in ("--nosibling"):
+            nosibling = True
 
     status_content = open(procstatus).read().rstrip('\n')
     cpursc = CpuResource(status_content, nosibling)
-    setting = Setting(cfg, l1xml, l2xml, xrancfg)
-    setting.update_l1threads(cpursc)
-    setting.update_l2threads(cpursc)
-    setting.update_l1bbu(cpursc)
-    setting.update_bbu_priority()
-    setting.update_fec()
-    l1output = l1xml
-    l2output = l2xml
-    xrancfg_out = xrancfg
-    if xrancfg is not None:
-        xrancfg_out = xrancfg
-        setting.update_xranthreads(cpursc)
-        setting.update_xran_workers(cpursc)
-        setting.update_eth()
-    if testfile is not None:
-        testfile_out = testfile
-        setting.update_testfile(cpursc, testfile)
-    if not writeback:
-        l1output = os.path.basename(l1xml) + '.out'
-        l2output = os.path.basename(l2xml) + '.out'
-        if xrancfg is not None:
-            xrancfg_out = os.path.basename(xrancfg) + '.out'
-    setting.writel1xml(l1output)
-    setting.writel2xml(l2output)
-    if xrancfg is not None:
-        setting.write_xrancfg_xml(xrancfg_out)
 
 if __name__ == "__main__":
      main(sys.argv[0], sys.argv[1:])
