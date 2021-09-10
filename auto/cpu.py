@@ -199,7 +199,16 @@ class Setting:
         pass
 
     def update_testfile(self, rsc, testfile):
-        pass
+        #print(self.cfg)
+        for line in self.cfg:
+            # Note: Not try catched.
+            if 'setcore' in line:
+                setcore_index = line.index('setcore')
+                # The number of cpus (cores or threads, depening on hyperthreading, needed.)
+                # Take the string, convert to hex, convert to binary, count the 1s.
+                num_cpus = (bin(int(line[setcore_index + len('setcore'):].strip(), 16))[2:]).count('1')
+                print(rsc.allocate_siblings(num_cpus))
+
 	# try to use allocate_siblings to allocate sibling threads
 	# reference https://docs.google.com/document/d/1CLlfh2pt2eOxwus0gnOXuAnGT9yRYVu0Rrr8wTAP_0I/edit?usp=sharing
         self.f.close()
