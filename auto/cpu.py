@@ -181,7 +181,7 @@ class Setting:
         if cfg:
             try:
                 f = open(cfg, 'r')
-                self.cfg = list(f)
+                self.cfg = yaml.load(f)
                 f.close()
             except:
                 sys.exit("can't process %s" %(cfg))
