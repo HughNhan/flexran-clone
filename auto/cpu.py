@@ -177,13 +177,14 @@ class CpuResource:
         return cpus
 
 class Setting:
-    def __init__(self, cfg):
-        try:
-            f = open(cfg, 'r')
-            self.cfg = list(f)
-            f.close()
-        except:
-            sys.exit("can't process %s" %(cfg))
+    def __init__(self, cfg=False):
+        if cfg:
+            try:
+                f = open(cfg, 'r')
+                self.cfg = list(f)
+                f.close()
+            except:
+                sys.exit("can't process %s" %(cfg))
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
@@ -206,14 +207,20 @@ class Setting:
     #   https://stackoverflow.com/questions/38935169/convert-elements-of-a-list-into-binary
     #   https://stackoverflow.com/questions/21409461/binary-list-from-indices-of-ascending-integer-list
     def update_testfile(self, rsc, testfile):
+        print('Updating testfile...')
+        try:
+            f = open(testfile, 'r')
+            cfg = list(f)
+            f.close()
+        except:
+            sys.exit("can't open %s" %(cfg))
         line_index = 0
-        for line in self.cfg:
+        for line in cfg:
             if 'setcore' in line:
                 setcore_index = line.index('setcore')
                 # The number of cpus (cores or threads, depening on hyperthreading, needed.)
                 # Take the string, convert to hex, convert to binary, count the 1s.
                 num_cpus = (bin(int(line[setcore_index + len('setcore'):].strip(), 16))[2:]).count('1')
-                print(num_cpus)
                 # Allocate siblings based on the current setcore.
                 cpus = rsc.allocate_siblings(num_cpus)
                 # Create a list of binary digits based off CPU indices.
@@ -225,13 +232,17 @@ class Setting:
                     new_setcore_binary = 2 * new_setcore_binary + digit
                 # Create the hex representation and replace the old setcore
                 new_setcore_hex = ' ' + hex(new_setcore_binary) + '\n'
-                self.cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
+                cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
 
             line_index += 1
 
         # Write the new configuration to the same file.
-        f = open(testfile, 'w')
-        f.writelines(self.cfg)
+        try:
+            f = open(testfile, 'w')
+            f.writelines(cfg)
+        except:
+            sys.exit("can't write %s" %(cfg))
+        print('New testfile written.')
         f.close()
 
 def main(name, argv):
@@ -264,7 +275,7 @@ def main(name, argv):
     cpursc = CpuResource(status_content, nosibling)
 
     if testfile_flag == True:
-        setting = Setting(testfile)
+        setting = Setting()
         setting.update_testfile(cpursc, testfile)
 
 if __name__ == "__main__":
