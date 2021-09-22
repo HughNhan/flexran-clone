@@ -1,0 +1,2 @@
+#!/usr/bash
+set -ex
