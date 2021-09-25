@@ -7,46 +7,102 @@ FLEXRAN_VERSION=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.
 
 set -eu
 
-if [[ "${1:-''}" == "cleanup" ]]; then
+print_usage() {
+    declare -A arr
+    arr+=( ["build"]="Build flexran container image"
+           ["push"]="Push flexran container image to repo"
+           ["purge"]="Purge dangling container images"
+           ["clean"]="Cleanup staging directory and delete flexran container image"
+         )
+    echo "Usage:"
+    echo ""
+    for key in ${!arr[@]}; do
+        printf '%-15s: %s\n' "$key" "${arr[$key]}"
+    done
+    exit 1
+}
+
+purge() {
     echo "purge old images ..."
     podman rmi -f $(podman images -f dangling=true -q) 2>/dev/null || true
-    exit 0 
-fi
+    exit 0
+}
 
-#  only update staging if the right version is not present
-if [ ! -e ${STAGING_DIR}/${FLEXRAN_VERSION} ]; then
-    echo "update staging area"
-    /bin/rm -rf $STAGING_DIR 2>/dev/null
-    mkdir -p $STAGING_DIR/flexran/{xran,sdk,dpdk,icc,tests,auto}
-    /bin/cp -r $FLEXRAN_DIR/{wls_mod,libs,misc,bin} $STAGING_DIR/flexran/
-    /bin/cp -r $FLEXRAN_DIR/xran/{app,banner.txt,build.sh,lib,Licenses.txt,misc,readme.md,test} $STAGING_DIR/flexran/xran/
-    /bin/cp -r $FLEXRAN_DIR/sdk/build-avx512-icc $STAGING_DIR/flexran/sdk/
-    /bin/cp -r $DPDK_DIR/{app,devtools,drivers,kernel,lib,license,usertools} $STAGING_DIR/flexran/dpdk/
-    /bin/cp -r $ICC_DIR/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin/* $STAGING_DIR/flexran/icc/
-    /bin/cp -r $FLEXRAN_DIR/tests/nr5g $STAGING_DIR/flexran/tests/
-    /bin/cp env.src $STAGING_DIR/flexran/auto/
-    touch ${STAGING_DIR}/${FLEXRAN_VERSION}
-else
-    echo "staging area is up to date"
-fi
+clean() {
+    echo "cleanup existing container image and staging directory"
+    podman rmi ${REPO}/flexran:${FLEXRAN_VERSION} 2>/dev/null || true
+    /bin/rm -rf ${STAGING_DIR}
+}
 
-rebuild="true"
-if podman inspect ${REPO}/flexran:${FLEXRAN_VERSION} >/dev/null 2>&1; then
-    timestamp_image=$(podman inspect -f '{{ .Created }}' ${REPO}/flexran:${FLEXRAN_VERSION} | awk '{--NF;print $0}')
-    epoch_image=$(date --date="${timestamp_image}" +"%s")
-    epoch_dockerfile=$(ls --time-style=+%s -l Dockerfile | awk "{print(\$6)}")
-    # if image is newer than dockerfile, no need to rebuild 
-    if ((epoch_dockerfile < epoch_image)); then
-        rebuild="false"
+build() {
+    #  only update staging if the right version is not present
+    if [ ! -e ${STAGING_DIR}/${FLEXRAN_VERSION} ]; then
+        echo "update staging area"
+        /bin/rm -rf $STAGING_DIR 2>/dev/null
+        mkdir -p $STAGING_DIR/flexran/{xran,sdk,dpdk,icc,tests,auto}
+        /bin/cp -r $FLEXRAN_DIR/{wls_mod,libs,misc,bin} $STAGING_DIR/flexran/
+        /bin/cp -r $FLEXRAN_DIR/xran/{app,banner.txt,build.sh,lib,Licenses.txt,misc,readme.md,test} $STAGING_DIR/flexran/xran/
+        /bin/cp -r $FLEXRAN_DIR/sdk/build-avx512-icc $STAGING_DIR/flexran/sdk/
+        /bin/cp -r $DPDK_DIR/{app,devtools,drivers,kernel,lib,license,usertools} $STAGING_DIR/flexran/dpdk/
+        /bin/cp -r $ICC_DIR/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin/* $STAGING_DIR/flexran/icc/
+        /bin/cp -r $FLEXRAN_DIR/tests/nr5g $STAGING_DIR/flexran/tests/
+        /bin/cp env.src $STAGING_DIR/flexran/auto/
+        touch ${STAGING_DIR}/${FLEXRAN_VERSION}
+    else
+        echo "staging area is up to date"
     fi
-fi    
+    
+    rebuild="true"
+    if podman inspect ${REPO}/flexran:${FLEXRAN_VERSION} >/dev/null 2>&1; then
+        timestamp_image=$(podman inspect -f '{{ .Created }}' ${REPO}/flexran:${FLEXRAN_VERSION} | awk '{--NF;print $0}')
+        epoch_image=$(date --date="${timestamp_image}" +"%s")
+        epoch_dockerfile=$(ls --time-style=+%s -l Dockerfile | awk "{print(\$6)}")
+        # if image is newer than dockerfile, no need to rebuild 
+        if ((epoch_dockerfile < epoch_image)); then
+            rebuild="false"
+        fi
+    fi    
+    
+    if [[ "${rebuild}" == "true" ]]; then
+        /bin/cp -f Dockerfile ${STAGING_DIR}/
+        echo "building image"
+        pushd $STAGING_DIR/
+        podman build -t ${REPO}/flexran:${FLEXRAN_VERSION} .
+        popd
+    else
+        echo "docker image is up to date"
+    fi
+}
 
-if [[ "${rebuild}" == "true" ]]; then
-    /bin/cp -f Dockerfile ${STAGING_DIR}/
-    echo "building image"
-    pushd $STAGING_DIR/
-    podman build -t ${REPO}/flexran:${FLEXRAN_VERSION} .
-    popd
+
+push() {
+    build
+    echo "pushing container image to repo ${REPO}"
+    podman push ${REPO}/flexran:${FLEXRAN_VERSION}
+}
+
+
+if (( $# != 1 )); then
+    print_usage 
 else
-    echo "docker image is up to date"
+    ACTION=$1
 fi
+
+case "${ACTION}" in
+    build)
+        build 
+    ;;
+    push)
+        push 
+    ;;
+    clean)
+        clean
+    ;;
+    purge)
+        purge
+    ;;
+    *)
+        print_usage 
+esac
+
+
