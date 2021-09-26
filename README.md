@@ -856,11 +856,16 @@ copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_m
 
 After these change are made, start the l1app by 
 ```
-cd /opt/flexran/auto/
-source env.src
-./driver.sh vfio  # this will make sure the driver is vfio bound
+source /opt/flexran/auto/env.src
+/opt/flexran/auto/driver.sh vfio  # this will make sure the driver is vfio bound
 cd /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/
 ./l1.sh -oru
 ```
 
-on terminal 2 run ```oc exec -it flexran sh```. Go to directory /opt/flexran/bin/nr5g/gnb/testmac. Start the TESTMAC by ```./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg```. This will automatically start the test suite.
+on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by 
+```
+cd /opt/flexran/bin/nr5g/gnb/testmac
+source /opt/flexran/auto/env.src
+./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg
+``` 
+This will automatically start the test suite.
