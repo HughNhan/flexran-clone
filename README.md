@@ -811,7 +811,7 @@ ip link set dev ${RU_ETH} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
 ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off 
 ```
 
-Go to directory bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
+Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
 
 In run_o_ru.sh, update --vf_addr_o_xu_a with the pci address of the two VF created.
 
@@ -825,6 +825,7 @@ In config_file_o_ru.dat,
 
 To start the RU,
 ```
+cd /opt/flexran && source ./set_env_var.sh -d
 cd bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru
 ./run_o_ru.sh
 ```
@@ -844,15 +845,22 @@ In xrancfg_sub6_oru.xml, the following fields need to be updated:
 * xRANThread: allocate a new cpu thread and put down the cpu id
 * xRANWorker: allocate a new cpu thread and put down the cpu mask
 
-Go to directory /opt/flexran/bin/nr5g/gnb/testmac, update phycfg_xran.xml as illustrated below.
+Go to directory /opt/flexran/bin/nr5g/gnb/testmac, update testmac_cfg.xml as illustrated below.
 
-In phycfg_xran.xml, the following fields need to be updated:
+In testmac_cfg.xml, the following fields need to be updated:
 * Threads: same rule as testmac_cfg.xml for timer mode
 
 copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_mu0_20mhz_hton_oru.cfg to /opt/flexran/bin/nr5g/gnb/testmac, and update this file:
 * phystart: 4 0 100007
 * setcore
 
-After these change are made, go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/ and start the l1app by `./l1.sh -oru`
+After these change are made, start the l1app by 
+```
+cd /opt/flexran/auto/
+source env.src
+./driver.sh vfio  # this will make sure the driver is vfio bound
+cd /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/
+./l1.sh -oru
+```
 
 on terminal 2 run ```oc exec -it flexran sh```. Go to directory /opt/flexran/bin/nr5g/gnb/testmac. Start the TESTMAC by ```./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg```. This will automatically start the test suite.
