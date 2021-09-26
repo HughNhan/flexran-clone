@@ -804,22 +804,24 @@ This will automatically start the test suite.
 
 ## Simulate RU from baremetal machine
 
-On the RU server, go to directory bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
+On the RU server, create 2 VFs,
+```
+echo 2 > /sys/class/net/${RU_ETH}/device/sriov_numvfs
+ip link set dev ${RU_ETH} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
+ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off 
+```
+
+Go to directory bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
 
 In run_o_ru.sh, update --vf_addr_o_xu_a with the pci address of the two VF created.
 
 In usecase_ru.cfg, 
 * ioCore
 * ioWorker
-* oXuNum: 1
-* oXuLinesNumber: 1
 * oXuRem0Mac0, oXuRem0Mac1: DU's VF mac address
 
 In config_file_o_ru.dat,
-* ccNum: 1
 * duMac0, duMac1: DU's VF mac address
-* c_plane_vlan_tag: 10
-* u_plane_vlan_tag: 20
 
 To start the RU,
 ```
@@ -837,25 +839,20 @@ In phycfg_xran.xml, the following fields need to be updated:
 * Threads: same rule as phycfg_timer.xml applies
 
 In xrancfg_sub6_oru.xml, the following fields need to be updated:
-* oRuNum: 1
-* oRuLinesNumber: 1
 * PciBusAddoRu0Vf0,PciBusAddoRu0Vf1: SRIOV VF pci address based on value of env var PCIDEVICE_OPENSHIFT_IO_INTELNICS0
 * oRuRem0Mac0, oRuRem0Mac1: remote RU's corresponding VF mac address
-* oRu0NumCc: 1
 * xRANThread: allocate a new cpu thread and put down the cpu id
 * xRANWorker: allocate a new cpu thread and put down the cpu mask
-* c_plane_vlan_tag: 10
-* u_plane_vlan_tag: 20
 
 Go to directory /opt/flexran/bin/nr5g/gnb/testmac, update phycfg_xran.xml as illustrated below.
 
 In phycfg_xran.xml, the following fields need to be updated:
 * Threads: same rule as testmac_cfg.xml for timer mode
 
-copy ../bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_mu0_20mhz_hton_oru.cfg to /opt/flexran/bin/nr5g/gnb/testmac, and update this file:
+copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_mu0_20mhz_hton_oru.cfg to /opt/flexran/bin/nr5g/gnb/testmac, and update this file:
 * phystart: 4 0 100007
 * setcore
 
-After these change are made, go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/ and start the l1app by `l1.sh -oru`
+After these change are made, go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/ and start the l1app by `./l1.sh -oru`
 
 on terminal 2 run ```oc exec -it flexran sh```. Go to directory /opt/flexran/bin/nr5g/gnb/testmac. Start the TESTMAC by ```./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg```. This will automatically start the test suite.
