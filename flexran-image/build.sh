@@ -46,7 +46,7 @@ build() {
         /bin/cp -r $DPDK_DIR/{app,devtools,drivers,kernel,lib,license,usertools} $STAGING_DIR/flexran/dpdk/
         /bin/cp -r $ICC_DIR/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin/* $STAGING_DIR/flexran/icc/
         /bin/cp -r $FLEXRAN_DIR/tests/nr5g $STAGING_DIR/flexran/tests/
-        /bin/cp env.src $STAGING_DIR/flexran/auto/
+        /bin/cp ./{env.src,driver.sh} $STAGING_DIR/flexran/auto/
         touch ${STAGING_DIR}/${FLEXRAN_VERSION}
     else
         echo "staging area is up to date"
