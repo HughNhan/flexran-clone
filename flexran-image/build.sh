@@ -1,8 +1,10 @@
+#!/bin/sh
+
 FLEXRAN_DIR=${FLEXRAN_DIR:-/opt/flexran}
 DPDK_DIR=${DPDK_DIR:-/opt/dpdk}
 STAGING_DIR=${STAGING_DIR:-${HOME}/staging}
 ICC_DIR=${ICC_DIR:-/opt/intel/system_studio_2019}
-REPO="10.16.231.128:5000"
+IMAGE_REPO=${IMAGE_REPO:-10.16.231.128:5000}
 FLEXRAN_VERSION=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
 
 set -eu
@@ -30,7 +32,7 @@ purge() {
 
 clean() {
     echo "cleanup existing container image and staging directory"
-    podman rmi ${REPO}/flexran:${FLEXRAN_VERSION} 2>/dev/null || true
+    podman rmi ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION} 2>/dev/null || true
     /bin/rm -rf ${STAGING_DIR}
 }
 
@@ -47,27 +49,32 @@ build() {
         /bin/cp -r $ICC_DIR/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin/* $STAGING_DIR/flexran/icc/
         /bin/cp -r $FLEXRAN_DIR/tests/nr5g $STAGING_DIR/flexran/tests/
         /bin/cp ./{env.src,driver.sh} $STAGING_DIR/flexran/auto/
+        /bin/cp -f Dockerfile ${STAGING_DIR}/
         touch ${STAGING_DIR}/${FLEXRAN_VERSION}
     else
         echo "staging area is up to date"
     fi
     
-    rebuild="true"
-    if podman inspect ${REPO}/flexran:${FLEXRAN_VERSION} >/dev/null 2>&1; then
-        timestamp_image=$(podman inspect -f '{{ .Created }}' ${REPO}/flexran:${FLEXRAN_VERSION} | awk '{--NF;print $0}')
+    rebuild="false"
+    if podman inspect ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION} >/dev/null 2>&1; then
+        timestamp_image=$(podman inspect -f '{{ .Created }}' ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION} | awk '{--NF;print $0}')
         epoch_image=$(date --date="${timestamp_image}" +"%s")
-        epoch_dockerfile=$(ls --time-style=+%s -l Dockerfile | awk "{print(\$6)}")
-        # if image is newer than dockerfile, no need to rebuild 
-        if ((epoch_dockerfile < epoch_image)); then
-            rebuild="false"
-        fi
+        for f in Dockerfile driver.sh env.src; do
+            epoch_file=$(ls --time-style=+%s -l $f | awk "{print(\$6)}")
+            # if image is newer than dockerfile, no need to rebuild 
+            if ((epoch_file > epoch_image)); then
+                /bin/cp -f $f ${STAGING_DIR}/
+                rebuild="true"
+            fi
+        done
+    else
+        rebuild="true"
     fi    
     
     if [[ "${rebuild}" == "true" ]]; then
-        /bin/cp -f Dockerfile ${STAGING_DIR}/
         echo "building image"
         pushd $STAGING_DIR/
-        podman build -t ${REPO}/flexran:${FLEXRAN_VERSION} .
+        podman build -t ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION} .
         popd
     else
         echo "docker image is up to date"
@@ -77,8 +84,8 @@ build() {
 
 push() {
     build
-    echo "pushing container image to repo ${REPO}"
-    podman push ${REPO}/flexran:${FLEXRAN_VERSION}
+    echo "pushing container image to repo ${IMAGE_REPO}"
+    podman push ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION}
 }
 
 
