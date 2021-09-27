@@ -1,31 +1,4 @@
-<?xml version="1.0"?>
-<!--                                                                                         -->
-<!-- INTEL CONFIDENTIAL -->
-<!-- Copyright 2009-2020 Intel Corporation All Rights Reserved. -->
-<!--  -->
-<!-- The source code contained or described herein and all documents related to the -->
-<!-- source code ("Material") are owned by Intel Corporation or its suppliers or -->
-<!-- licensors. Title to the Material remains with Intel Corporation or its -->
-<!-- suppliers and licensors. The Material may contain trade secrets and proprietary -->
-<!-- and confidential information of Intel Corporation and its suppliers and -->
-<!-- licensors, and is protected by worldwide copyright and trade secret laws and -->
-<!-- treaty provisions. No part of the Material may be used, copied, reproduced, -->
-<!-- modified, published, uploaded, posted, transmitted, distributed, or disclosed -->
-<!-- in any way without Intel's prior express written permission. -->
-<!--  -->
-<!-- No license under any patent, copyright, trade secret or other intellectual -->
-<!-- property right is granted to or conferred upon you by disclosure or delivery -->
-<!-- of the Materials, either expressly, by implication, inducement, estoppel or -->
-<!-- otherwise. Any license under such intellectual property rights must be -->
-<!-- express and approved by Intel in writing. -->
-<!--  -->
-<!-- Unless otherwise agreed by Intel in writing, you may not remove or alter this -->
-<!-- notice or any other notice embedded in Materials by Intel or Intel's suppliers -->
-<!-- or licensors in any way. -->
-<!--  -->
-<!--  version: RefPHY-20.11 -->
-<!--                                                                                         -->
-<PhyConfig>
+<!--                                                                                         --><!-- INTEL CONFIDENTIAL --><!-- Copyright 2009-2020 Intel Corporation All Rights Reserved. --><!--  --><!-- The source code contained or described herein and all documents related to the --><!-- source code ("Material") are owned by Intel Corporation or its suppliers or --><!-- licensors. Title to the Material remains with Intel Corporation or its --><!-- suppliers and licensors. The Material may contain trade secrets and proprietary --><!-- and confidential information of Intel Corporation and its suppliers and --><!-- licensors, and is protected by worldwide copyright and trade secret laws and --><!-- treaty provisions. No part of the Material may be used, copied, reproduced, --><!-- modified, published, uploaded, posted, transmitted, distributed, or disclosed --><!-- in any way without Intel's prior express written permission. --><!--  --><!-- No license under any patent, copyright, trade secret or other intellectual --><!-- property right is granted to or conferred upon you by disclosure or delivery --><!-- of the Materials, either expressly, by implication, inducement, estoppel or --><!-- otherwise. Any license under such intellectual property rights must be --><!-- express and approved by Intel in writing. --><!--  --><!-- Unless otherwise agreed by Intel in writing, you may not remove or alter this --><!-- notice or any other notice embedded in Materials by Intel or Intel's suppliers --><!-- or licensors in any way. --><!--  --><!--  version: RefPHY-20.11 --><!--                                                                                         --><PhyConfig>
     <version>20.11</version>
 
     <Api>
@@ -59,13 +32,13 @@
         <!--  name of DPDK memory zone, needs to align between primary and secondary process -->
         <dpdkFilePrefix>gnb0</dpdkFilePrefix>
         <!--  DPDK memory size allocated from hugepages [MB]  [default: 2048] -->
-        <dpdkMemorySize>2048</dpdkMemorySize>
+        <dpdkMemorySize>4096</dpdkMemorySize>
         <!--  DPDK IOVA Mode used for DPDK initialization. If 0, then PA mode. Else VA Mode -->
         <dpdkIovaMode>0</dpdkIovaMode>
         <!--  DPDK FEC BBDEV to use             [0 - SW, 1 - HW accelerator, 2 - Both] -->
-        <dpdkBasebandFecMode>0</dpdkBasebandFecMode>
+        <dpdkBasebandFecMode>1</dpdkBasebandFecMode>
         <!--  DPDK BBDev name added to the passlist. The argument format is <[domain:]bus:devid.func> -->
-        <dpdkBasebandDevice>0000:1f:00.1</dpdkBasebandDevice>
+        <dpdkBasebandDevice>0000:b6:00.6</dpdkBasebandDevice>
     </DPDK>
 
     <!-- This section is used with FerryBridge FPGA and 5GNR code -->
@@ -544,4 +517,3 @@
     </StreamStats>
 
 </PhyConfig>
-

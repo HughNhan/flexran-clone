@@ -1,3 +1,10 @@
+Cfg_file_paths:
+  1: 
+    phycfg_timer: cfg_examples/
+  2: 
+    testmac_cfg: cfg_examples/
+    
+
 Threads:
   1:
     phycfg_timer:
@@ -25,3 +32,7 @@ Threads:
       wlsRxThread:
         pri: 90
 
+Dpdk_cfgs:
+  1:
+    phycfg_timer:
+      dpdkMemorySize: 4096
