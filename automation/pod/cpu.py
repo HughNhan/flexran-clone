@@ -136,6 +136,7 @@ class CpuResource:
         cpu_binary = 0
         for digit in cpu_list:
             cpu_binary = 2 * cpu_binary + digit
+        
         return hex(cpu_binary)
 
     # allocate one cpu, always use low order cpu if possible

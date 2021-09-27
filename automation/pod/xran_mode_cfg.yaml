@@ -1,38 +1,41 @@
 Cfg_file_paths:
   1: 
-    phycfg_timer: cfg_examples/
+    phycfg_xran: cfg_examples/
   2: 
-    testmac_cfg: cfg_examples/
+    xrancfg_sub6_oru: cfg_examples/
     
 
 Threads:
   1:
-    phycfg_timer:
+    phycfg_xran:
       systemThread:
         pri: 0
       FpgaDriverCpuInfo:
         pri: 0
       FrontHaulCpuInfo:
         pri: 0
-    testmac_cfg:
-      systemThread:
-        pri: 0
-      runThread:
-        pri: 89
-      urllcThread:
-        pri: 90
   2:
-    phycfg_timer:
+    phycfg_xran:
       timerThread:
         pri: 96 
       radioDpdkMaster:
         pri: 99
   3:
-    testmac_cfg:
-      wlsRxThread:
-        pri: 90
+    test_mode: xran
+    xrancfg_sub6_oru:
+      xRANThread:
+        pri: 94
+      xRANWorker:
+        pri: 95
+        format: core_mask
+
+
 
 Dpdk_cfgs:
   1:
-    phycfg_timer:
+    phycfg_xran:
       dpdkMemorySize: 4096
+  2:
+    xrancfg_sub6_oru:
+      test_mode: xran
+
