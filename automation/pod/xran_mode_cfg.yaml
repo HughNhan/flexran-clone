@@ -1,0 +1,38 @@
+Cfg_file_paths:
+  1: 
+    phycfg_timer: cfg_examples/
+  2: 
+    testmac_cfg: cfg_examples/
+    
+
+Threads:
+  1:
+    phycfg_timer:
+      systemThread:
+        pri: 0
+      FpgaDriverCpuInfo:
+        pri: 0
+      FrontHaulCpuInfo:
+        pri: 0
+    testmac_cfg:
+      systemThread:
+        pri: 0
+      runThread:
+        pri: 89
+      urllcThread:
+        pri: 90
+  2:
+    phycfg_timer:
+      timerThread:
+        pri: 96 
+      radioDpdkMaster:
+        pri: 99
+  3:
+    testmac_cfg:
+      wlsRxThread:
+        pri: 90
+
+Dpdk_cfgs:
+  1:
+    phycfg_timer:
+      dpdkMemorySize: 4096
