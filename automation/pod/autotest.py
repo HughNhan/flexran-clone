@@ -5,7 +5,7 @@ import os,re,copy,sys,getopt,yaml
 import xml.etree.ElementTree as ET
 from cpu import CpuResource
 
-from read_yaml_write_xml import CfgThreadData
+from read_yaml_write_xml import CfgData
 from process_testfile import ProcessTestfile
 
 procstatus = '/proc/self/status'
@@ -16,7 +16,7 @@ class Setting:
     # use self.cfg info to update the config files: phycfg_timer.xml, testmac_cfg.xml
     # assume these config files exist under the current directory
     # reference https://docs.google.com/document/d/1CLlfh2pt2eOxwus0gnOXuAnGT9yRYVu0Rrr8wTAP_0I/edit?usp=sharing
-        CfgThreadData.update_threads_cfg_xml(cfg, cpursc)
+        CfgData.process_cfg_xml(cfg, cpursc)
 
     # Call the update_tesfile function of the ProcessTestfile class (in
     # process_testfile.py).
@@ -26,7 +26,7 @@ class Setting:
 
 def main(name, argv):
     nosibling = False
-    cfg = "threads.yaml"
+    cfg = "timer_mode_cfg.yaml"
     helpstr = name + " --testfile=<testfile path>"\
                      " --cfg=<yaml_cfg>"\
                      " --nosibling"\
