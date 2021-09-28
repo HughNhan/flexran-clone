@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # This is based on https://gist.github.com/amadorpahim/3062277
 
-import os,re,copy,sys,getopt,yaml
+import os,re,copy,sys,getopt,yaml,copy
 import xml.etree.ElementTree as ET
 
 cpuinfo = '/proc/cpuinfo'
@@ -128,6 +128,16 @@ class CpuResource:
             for s in siblings:
                 self.available.remove(s)
 
+    # convert cpu list to hex
+    def _cpus_to_hex(self, cpus):
+        cpu_list = [int(i in cpus) for i in range(max(cpus)+1)]
+        # Revere the list, then create the binary number.
+        cpu_list.reverse()
+        cpu_binary = 0
+        for digit in cpu_list:
+            cpu_binary = 2 * cpu_binary + digit
+        return hex(cpu_binary)
+
     # allocate one cpu, always use low order cpu if possible
     def allocateone(self):
         try:
@@ -143,6 +153,18 @@ class CpuResource:
         for s in siblings:
             self.available.remove(s)
         return cpu
+
+    # get these siblings but keep them in the pool; so they can be re-used
+    def get_free_siblings(self, num):
+        original_pool = copy.deepcopy(self.available)
+        cpus = self.allocate_siblings(num)
+        self.available = original_pool
+        return cpus
+
+    # get these siblings's cpu mask in hex string
+    def get_free_siblings_mask(self, num):
+        cpus = self.get_free_siblings(num)
+        return self._cpus_to_hex(cpus)
 
     def allocate_siblings(self, num):
         cpus = []
@@ -160,15 +182,10 @@ class CpuResource:
                     num -= 1
         return cpus
 
+    # allocate these siblings and return their cpu mask in hex string
     def allocate_siblings_mask(self, num):
         cpus = self.allocate_siblings(num)
-        cpu_list = [int(i in cpus) for i in range(max(cpus)+1)]
-        # Revere the list, then create the binary number.
-        cpu_list.reverse()
-        cpu_binary = 0
-        for digit in cpu_list:
-            cpu_binary = 2 * cpu_binary + digit
-        return hex(cpu_binary)
+        return self._cpus_to_hex(num)
 
     # specify the list of cpu to remove from available list
     def remove(self, l):
