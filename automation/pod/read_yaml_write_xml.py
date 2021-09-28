@@ -150,11 +150,10 @@ class CfgData:
         except Exception as e:
             sys.exit("Could not open the thread xml file: %s" %e)
 
-
-    @classmethod
-    def process_threads_cfg_into_xml(cls):
-        for file in cls.dict_list_cfg_threads.keys():
-            cls.read_and_update_threads_cfg_xml(file, cls.dict_list_cfg_threads[file])
+    #@classmethod
+    def process_threads_cfg_into_xml(self):
+        for file in self.dict_list_cfg_threads.keys():
+            self.read_and_update_threads_cfg_xml(file, self.dict_list_cfg_threads[file])
 
 
     @classmethod

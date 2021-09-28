@@ -42,6 +42,10 @@ def main(name, argv):
         if opt == '-h':
             print(helpstr)
             sys.exit()
+        elif opt in ("--testmac_dir"):
+            testmac_dir = arg
+        elif opt in ("--l1_dir"):
+            l1_dir = arg
         elif opt in ("--testfile"):
             testfile = arg
         elif opt in ("--cfg"):
@@ -52,9 +56,10 @@ def main(name, argv):
     status_content = open(procstatus).read().rstrip('\n')
     cpursc = CpuResource(status_content, nosibling)
 
-    Setting.update_cfg_files(cfg, cpursc)
+    Setting.update_cfg_files(cfg, cpursc, testmac_dir, l1_dir)
     Setting.update_testfile(cpursc, testfile)
 
+    print('Files updated.')
 
 if __name__ == "__main__":
      main(sys.argv[0], sys.argv[1:])
