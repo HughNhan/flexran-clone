@@ -78,10 +78,17 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
+<<<<<<< HEAD
     exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
 
 def copy_files(pod_name, destination, files):
     print('\nCopying files to pod \'' + pod_name + '\':')
+=======
+    #exec_commands(pod_name, core_v1)
+
+def copy_files(pod_name, destination, files):
+    print('Copying files to pod \'' + pod_name + '\':')
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     for file in files:
         output = subprocess.check_output(
                 ['oc', 'cp', file, pod_name + ':' + destination])
@@ -106,6 +113,7 @@ def check_and_start_pod(name, api_instance):
         if e.status != 404:
             print("Unknown error: %s" % e)
             exit(1)
+<<<<<<< HEAD
     #print(resp.status.phase)
     if resp and resp.status.phase != 'Running':
         print("Pod %s exists but is not running. Deleting it..." % name)
@@ -122,6 +130,12 @@ def check_and_start_pod(name, api_instance):
     if not resp or resp.status.phase != 'Running':
         print("Pod %s does not exist. Creating it..." % name)
         with open("pod_flexran_n3000.yaml", "r") as f:
+=======
+
+    if not resp:
+        print("Pod %s does not exist. Creating it..." % name)
+        with open("pod_flexran_sw.yaml", "r") as f:
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
             pod_manifest = yaml.safe_load(f)
         resp = api_instance.create_namespaced_pod(body=pod_manifest,
                                                   namespace='default')
@@ -146,8 +160,14 @@ def exec_updates(name, api_instance, destination, testmac,
                   stdout=True, tty=True,
                   _preload_content=False)
 
+<<<<<<< HEAD
     update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg
 
+=======
+    update_command = "./autotest.py --testmac_dir " + testmac + " --l1_dir " + \
+                     l1 + " --testfile " + testfile + " --cfg " + cfg
+    print(update_command)
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     if no_sibling:
         update_command = update_command + ' --no_sibling'
 
@@ -174,12 +194,20 @@ def exec_updates(name, api_instance, destination, testmac,
     if "Files updated." in output:
         if DEBUG:
             print(output)
+<<<<<<< HEAD
         print("Finished updating files on pod.\n")
+=======
+        print("Finished updating files on pod")
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     else:
         print(output)
         sys.exit(1)
 
+<<<<<<< HEAD
 def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
+=======
+def exec_commands(name, api_instance):
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -191,7 +219,11 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
                   _preload_content=False)
     commands = [
         "source /opt/flexran/auto/env.src",
+<<<<<<< HEAD
         "cd " + l1,
+=======
+        "cd /opt/flexran/bin/nr5g/gnb/l1",
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
         "./l1.sh -e",
     ]
 
@@ -208,7 +240,11 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
     resp.run_forever(5)
     output = resp.read_stdout()
     if "welcome" in output:
+<<<<<<< HEAD
         print("l1app ready\n")
+=======
+        print("l1app ready")
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     else:
         print(output)
         sys.exit(1)
@@ -222,8 +258,13 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
                   _preload_content=False)
     commands = [
         "source /opt/flexran/auto/env.src",
+<<<<<<< HEAD
         "cd " + testmac,
         "./l2.sh --testfile=" + testfile,
+=======
+        "cd /opt/flexran/bin/nr5g/gnb/testmac",
+        "./l2.sh --testfile=cascade_lake-sp/clxsp_mu1_100mhz_4x4_hton.cfg",
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     ]
 
     while testmac_resp.is_open():
@@ -236,16 +277,24 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
         else:
             break
 
+<<<<<<< HEAD
     l1_output = output
 
     testmac_resp.run_forever(5)
     output = testmac_resp.read_stdout()
     if "welcome" in output:
         print("Testmac ready\n")
+=======
+    testmac_resp.run_forever(5)
+    output = testmac_resp.read_stdout()
+    if "welcome" in output:
+        print("testmac ready")
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
     else:
         print(output)
         sys.exit(1)
 
+<<<<<<< HEAD
     print('Running tests...')
 
     testmac_output = ''
@@ -272,6 +321,14 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
             test_output.close()
 
             print("Completed.")
+=======
+    while testmac_resp.is_open():
+        testmac_resp.run_forever(3)
+        output = testmac_resp.read_stdout()
+        result = re.search(r"All Tests Completed.*\n", output)
+        if result:
+            print(result.group())
+>>>>>>> b340eba... Large update: Updating code to take paths to configs, updating for exec on pods
             break
 
     resp.write_stdin("exit\n")
