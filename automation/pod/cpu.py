@@ -102,14 +102,20 @@ class CpuInfo:
 
 class CpuResource:
     # data is the file content read from /proc/self/status; nosibling: True means do not use sibling threads
-    def __init__(self, data, nosibling=False):
+    def __init__(self, data, nosibling=False, available=""):
+        self.cpuinfo = CpuInfo()
+
+        # if caller specify available already, use it and done
+        if available != "":
+            self.available = available
+            return
+    
         try:
             cpustr = re.search(r'Cpus_allowed_list:\s*([0-9\-\,]+)', data).group(1)
         except:
             sys.exit("couldn't match Cpus_allowed_list")
         self.original = getcpulist(cpustr)
         self.available = copy.deepcopy(self.original)
-        self.cpuinfo = CpuInfo()
 
         # remove cpu that does not belong to cpuinfo
         for c in self.original:
@@ -154,6 +160,16 @@ class CpuResource:
                     num -= 1
         return cpus
 
+    def allocate_siblings_mask(self, num):
+        cpus = self.allocate_siblings(num)
+        cpu_list = [int(i in cpus) for i in range(max(cpus)+1)]
+        # Revere the list, then create the binary number.
+        cpu_list.reverse()
+        cpu_binary = 0
+        for digit in cpu_list:
+            cpu_binary = 2 * cpu_binary + digit
+        return hex(cpu_binary)
+
     # specify the list of cpu to remove from available list
     def remove(self, l):
         self.available.remove(l)
@@ -174,5 +190,47 @@ class CpuResource:
         for i in range(num):
             cpus.append(self.allocateone())
         return cpus
+
+class CpuSet():
+    # cpuset_str take form of comma seperated string, such as 0-5,34,46-48
+    def __init__(self, cpuset_str):
+        self.cpuset_list = []
+        ranges = cpuset_str.split(',')
+        for r in ranges:
+            boundaries = r.split('-')
+            if len(boundaries) == 1:
+                # no '-' found
+                elem = boundaries[0]
+                self.cpuset_list.append(int(elem))
+            elif len(boundaries) == 2:
+                # '-' found
+                start = int(boundaries[0])
+                end = int(boundaries[1])
+                for n in range(start, end+1):
+                    self.cpuset_list.append(n)
+        self.cpuset_list.sort()
+    
+    def cpuset_str(self):
+        if len(self.cpuset_list) == 0:
+            return ""
+        ranges = [[self.cpuset_list[0], self.cpuset_list[0]]]
+        for i in range(1, len(self.cpuset_list)):
+            lastRange = ranges[-1]
+            if self.cpuset_list[i] == lastRange[1]+1:
+                lastRange[1] = self.cpuset_list[i]
+                continue
+            ranges.append([self.cpuset_list[i], self.cpuset_list[i]])
+        output_str = ""
+        for r in ranges:
+            if r[0] == r[1]:
+                output_str = "%s,%d" % (output_str, r[0])
+            else:
+                output_str = "%s,%d-%d" %(output_str, r[0], r[1])
+        return output_str.lstrip(',')
+
+    def substract(self, cpuset_str):
+        sub_cpuset = CpuSet(cpuset_str)
+        for cpu in sub_cpuset.cpuset_list:
+            self.cpuset_list.remove(cpu)
 
 
