@@ -60,7 +60,7 @@ To start the actual test, in the testmac console, `runall 0`
 
 ![test topology](https://docs.google.com/drawings/d/e/2PACX-1vRWU499sFr2jgnzafd8NlSMGo-eHWDef9fzB6Ivzme-6KAsLZvC3ckBgCzA7nV-YlZJcLRMdCWOsW5e/pub?w=960&h=720)
 
-## Topology
+## OpenShift FlexRAN test topology
 
 <img src="https://docs.google.com/drawings/d/e/2PACX-1vR16eZbQErsaNF6m6sxKFReS5zox6DrMaO4KerCKgKVwPmkOQ5N3kZabsbbZr0kc2uoWXkY4uwqjVdC/pub?w=960&amp;h=720">
 
