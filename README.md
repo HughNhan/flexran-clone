@@ -56,10 +56,13 @@ There are comments in the xml file to explain the purpose of these fields.
 
 To start the actual test, in the testmac console, `runall 0`
 
-
 ## OpenShift FlexRAN test topology
 
 ![test topology](https://docs.google.com/drawings/d/e/2PACX-1vRWU499sFr2jgnzafd8NlSMGo-eHWDef9fzB6Ivzme-6KAsLZvC3ckBgCzA7nV-YlZJcLRMdCWOsW5e/pub?w=960&h=720)
+
+## Topology
+
+<img src="https://docs.google.com/drawings/d/e/2PACX-1vR16eZbQErsaNF6m6sxKFReS5zox6DrMaO4KerCKgKVwPmkOQ5N3kZabsbbZr0kc2uoWXkY4uwqjVdC/pub?w=960&amp;h=720">
 
 ## add labels to the worker node
 
@@ -830,7 +833,7 @@ cd bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru
 ./run_o_ru.sh
 ```
 
-## Run front haul test from the flexran pod
+### Run xran test suite from the flexran pod
 
 After the pod is started, on terminal 1 run ```oc exec -it flextan sh```. Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/ and update phycfg_xran.xml and xrancfg_sub6_oru.xml as illustrated below.
 
@@ -868,4 +871,5 @@ cd /opt/flexran/bin/nr5g/gnb/testmac
 source /opt/flexran/auto/env.src
 ./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg
 ``` 
+
 This will automatically start the test suite.
