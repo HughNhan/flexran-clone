@@ -78,7 +78,7 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
-    exec_commands(pod_name, core_v1)
+    #exec_commands(pod_name, core_v1)
 
 def copy_files(pod_name, destination, files):
     print('Copying files to pod \'' + pod_name + '\':')
@@ -146,8 +146,7 @@ def exec_updates(name, api_instance, destination, testmac,
                   stdout=True, tty=True,
                   _preload_content=False)
 
-    update_command = "./autotest.py --testmac_dir " + testmac + " --l1_dir " + \
-                     l1 + " --testfile " + testfile + " --cfg " + cfg
+    update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg
     print(update_command)
     if no_sibling:
         update_command = update_command + ' --no_sibling'
