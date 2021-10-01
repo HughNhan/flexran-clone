@@ -17,6 +17,7 @@ class CfgThread:
 
     cfg_file_name: str = field(init=False, default=None)
     thread_id: int = field(init=False, default=None)
+    thread_mask: str = field(init=False, default=None)
     thread_name: str = field(init=False, default=None)
     thread_pri: int = field(init=False, default=None)
     init: bool =  field(init=True, default=False)
@@ -35,6 +36,11 @@ class CfgThread:
 @dataclass
 class CfgDpdk:
 
+    test_mode_xran: bool = field(init=True, default=False)
+
+    #timer mode cfg fields
+    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100" 
+
     cfg_file_name: str = field(init=False, default=None)
     mem_size_str: str = field(init=False, default=None) 
     mem_size_val: int = field(init=False, default=None)
@@ -43,6 +49,16 @@ class CfgDpdk:
     base_band_fec_mode_val: int = field(init=False, default=None)
     base_band_device_str: str = "dpdkBasebandDevice"
     base_band_device_val: str = field(init=False, default="0000:1f:00.1")
+
+    #xran mode cfg fields
+    env_pcidevice_openshift_str: str = "PCIDEVICE_OPENSHIFT_IO_INTELNICS0"
+
+    pce_bus_ru0vf0_str: str = "PciBusAddoRu0Vf0"
+    pce_bus_ru0vf0_val: str = field(init=False, default=None)
+    pce_bus_ru0vf1_str: str = "PciBusAddoRu0Vf1"
+    pce_bus_ru0vf1_val: str = field(init=False, default=None)
+
+
 
 class CfgData:
     # file paths 
@@ -54,9 +70,6 @@ class CfgData:
     monk_cpu_id = 0
 
     # dpdk cfgs
-    #phycfg_timer_cfg_xml = 'phycfg_timer.xml'
-    #phycfg_timer_cfg_xml = 'pod_testmac.xml'
-    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100" 
     dict_list_cfg_dpdks: Dict[str, List[CfgDpdk]] = {}
 
     #start of methods for thread config
@@ -155,16 +168,23 @@ class CfgData:
     def load_dpdk_cfg(cls, cfg_file: str, cfg_field: str, cfg_val: int):
         a_dpdk_cfg = CfgDpdk()
         a_dpdk_cfg.cfg_file_name = cfg_file
-        a_dpdk_cfg.mem_size_str = cfg_field
-        a_dpdk_cfg.mem_size_val = cfg_val
 
-        env_value = get_env_variable(cls.env_acc_mode_str)
-        if(env_value is None):
-            a_dpdk_cfg.base_band_fec_mode_val = 0
-        else:
-            a_dpdk_cfg.base_band_fec_mode_val = 1
-            a_dpdk_cfg.base_band_device_val = env_value
-            #print("env value ", env_value)
+        if cfg_field is "test_mode":
+            a_dpdk_cfg.test_mode_xran = True
+            env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
+            if env_value is not None:
+               a_dpdk_cfg.pce_bus_ru0vf0_val, a_dpdk_cfg.pce_bus_ru0vf1_val = env_value.split(',', 1)
+        else: 
+            a_dpdk_cfg.mem_size_str = cfg_field
+            a_dpdk_cfg.mem_size_val = cfg_val
+
+            env_value = get_env_variable(CfgDpdk.env_acc_mode_str)
+            if(env_value is None):
+                a_dpdk_cfg.base_band_fec_mode_val = 0
+            else:
+                a_dpdk_cfg.base_band_fec_mode_val = 1
+                a_dpdk_cfg.base_band_device_val = env_value
+                #print("env value ", env_value)
 
 
         if cfg_file not in cls.dict_list_cfg_dpdks.keys():

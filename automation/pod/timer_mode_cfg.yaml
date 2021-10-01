@@ -1,3 +1,6 @@
+Test_mode:
+  timer_mode
+
 Cfg_file_paths:
   1: 
     phycfg_timer: cfg_examples/
