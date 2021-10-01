@@ -185,7 +185,7 @@ class CpuResource:
     # allocate these siblings and return their cpu mask in hex string
     def allocate_siblings_mask(self, num):
         cpus = self.allocate_siblings(num)
-        return self._cpus_to_hex(num)
+        return self._cpus_to_hex(cpus)
 
     # specify the list of cpu to remove from available list
     def remove(self, l):
