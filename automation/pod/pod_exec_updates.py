@@ -78,7 +78,7 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
-    #exec_commands(pod_name, core_v1)
+    exec_commands(pod_name, core_v1)
 
 def copy_files(pod_name, destination, files):
     print('Copying files to pod \'' + pod_name + '\':')
@@ -106,8 +106,20 @@ def check_and_start_pod(name, api_instance):
         if e.status != 404:
             print("Unknown error: %s" % e)
             exit(1)
+    #print(resp.status.phase)
+    if resp and resp.status.phase != 'Running':
+        print("Pod %s exists but is not running. Deleting it..." % name)
+        resp = api_instance.delete_namespaced_pod(name=name,
+                                                namespace='default')
+        while True:
+            try:
+                resp = api_instance.read_namespaced_pod(name=name,
+                                                        namespace='default')
+            except:
+                break
+            time.sleep(1)
 
-    if not resp:
+    if not resp or resp.status.phase != 'Running':
         print("Pod %s does not exist. Creating it..." % name)
         with open("pod_flexran_sw.yaml", "r") as f:
             pod_manifest = yaml.safe_load(f)
