@@ -42,7 +42,7 @@ class CfgDpdk:
     base_band_fec_mode_str: str = "dpdkBasebandFecMode" 
     base_band_fec_mode_val: int = field(init=False, default=None)
     base_band_device_str: str = "dpdkBasebandDevice"
-    base_band_device_val: str = field(init=False, default=None)
+    base_band_device_val: str = field(init=False, default="0000:1f:00.1")
 
 class CfgData:
     # file paths 

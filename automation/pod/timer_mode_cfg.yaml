@@ -1,13 +1,13 @@
 Cfg_file_paths:
   1: 
-    phycfg_timer: cfg_examples/
+    timer_pod_work: cfg_examples/
   2: 
     testmac_cfg: cfg_examples/
     
 
 Threads:
   1:
-    phycfg_timer:
+    timer_pod_work:
       systemThread:
         pri: 0
       FpgaDriverCpuInfo:
@@ -22,7 +22,7 @@ Threads:
       urllcThread:
         pri: 90
   2:
-    phycfg_timer:
+    timer_pod_work:
       timerThread:
         pri: 96 
       radioDpdkMaster:
@@ -34,5 +34,5 @@ Threads:
 
 Dpdk_cfgs:
   1:
-    phycfg_timer:
+    timer_pod_work:
       dpdkMemorySize: 4096
