@@ -27,17 +27,8 @@ class ProcessTestfile:
                 # The number of cpus (cores or threads, depening on hyperthreading, needed.)
                 # Take the string, convert to hex, convert to binary, count the 1s.
                 num_cpus = (bin(int(line[setcore_index + len('setcore'):].strip(), 16))[2:]).count('1')
-                # Allocate siblings based on the current setcore.
-                cpus = rsc.allocate_siblings(num_cpus)
-                # Create a list of binary digits based off CPU indices.
-                new_setcore_list = [int(i in cpus) for i in range(max(cpus)+1)]
-                # Revere the list, then create the binary number.
-                new_setcore_list.reverse()
-                new_setcore_binary = 0
-                for digit in new_setcore_list:
-                    new_setcore_binary = 2 * new_setcore_binary + digit
                 # Create the hex representation and replace the old setcore
-                new_setcore_hex = ' ' + hex(new_setcore_binary) + '\n'
+                new_setcore_hex = ' ' + rsc.get_free_siblings_mask(num_cpus) + '\n'
                 cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
 
             line_index += 1
