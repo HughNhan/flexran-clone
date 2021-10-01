@@ -3,7 +3,7 @@
 from io import TextIOWrapper
 from re import I
 import sys, yaml, os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import lxml.etree as LET
 from dataclasses import dataclass, field
 from cpu import CpuResource
@@ -17,10 +17,16 @@ class CfgThread:
 
     cfg_file_name: str = field(init=False, default=None)
     thread_id: int = field(init=False, default=None)
+
     thread_mask: str = field(init=False, default=None)
+    use_thread_mask: bool =  field(init=False, default=False)
+    test_mode_xran: bool =  field(init=False, default=False)
+
     thread_name: str = field(init=False, default=None)
     thread_pri: int = field(init=False, default=None)
     init: bool =  field(init=True, default=False)
+
+
 
     def fill_cfg(self, file_name: str, thread_id: int, thread_name: str, pri: int):
         init = True
@@ -30,6 +36,8 @@ class CfgThread:
         self.thread_pri = pri
     
     def get_xml_text_value_str(self) -> str :
+        if self.use_thread_mask:
+            return(self.thread_mask + ", " + str(self.thread_pri) + ", 0")
         return(str(self.thread_id) + ", " + str(self.thread_pri) + ", 0")
 
 
@@ -51,12 +59,13 @@ class CfgDpdk:
     base_band_device_val: str = field(init=False, default="0000:1f:00.1")
 
     #xran mode cfg fields
+    #PCIDEVICE_OPENSHIFT_IO_INTELNICS0=0000:65:02.5,0000:65:02.6
     env_pcidevice_openshift_str: str = "PCIDEVICE_OPENSHIFT_IO_INTELNICS0"
 
-    pce_bus_ru0vf0_str: str = "PciBusAddoRu0Vf0"
-    pce_bus_ru0vf0_val: str = field(init=False, default=None)
-    pce_bus_ru0vf1_str: str = "PciBusAddoRu0Vf1"
-    pce_bus_ru0vf1_val: str = field(init=False, default=None)
+    pci_bus_ru0vf0_str: str = "PciBusAddoRu0Vf0"
+    pci_bus_ru0vf0_val: str = field(init=False, default="0000:1a:02.0")
+    pci_bus_ru0vf1_str: str = "PciBusAddoRu0Vf1"
+    pci_bus_ru0vf1_val: str = field(init=False, default="0000:1a:02.1")
 
 
 
@@ -79,7 +88,7 @@ class CfgData:
         return cls.monk_cpu_id
 
     @classmethod 
-    def load_thread_cfg(cls, cfg_file_name: str, thread_name: str, thread_id: int, pri: int):
+    def load_thread_cfg(cls, cfg_file_name: str, thread_name: str, thread_id: int, pri: int, thread_mask: Optional[str]):
         #print(cfg_file_name, ": ", thread_name, "pri: ", pri)
         if thread_name not in cls.dict_thread_name_id.keys():
             id = thread_id 
@@ -87,6 +96,10 @@ class CfgData:
 
         athread = CfgThread() 
         athread.fill_cfg(cfg_file_name, cls.dict_thread_name_id[thread_name], thread_name, pri)
+        if thread_mask is not None:
+            athread.thread_id = None
+            athread.thread_mask = thread_mask
+
         if cfg_file_name not in cls.dict_list_cfg_threads.keys():
             cls.dict_list_cfg_threads[cfg_file_name] = [athread] 
         else:
@@ -137,13 +150,25 @@ class CfgData:
                 #print (num, ": ", yaml_threads[num])
                 cfg_objs = yaml_threads[num]
                 thread_id = cpu_resource.allocate_whole_core()
+                if "test_mode" in cfg_objs.keys():
+                    if cfg_objs["test_mode"] == "xran":
+                        test_mode_xran = True
                 for cfg in cfg_objs:
                     #print(cfg, ": ", cfg_objs[cfg])
+                    if cfg_objs[cfg] == "test_mode":
+                        continue
                     threads = cfg_objs[cfg]
                     for thread in threads:
                         #print(thread, ": ", threads[thread]["pri"])
                         cfg_name = cfg + ".xml"
-                        cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"])
+                        if "format" in threads[thread]  and threads[thread]["format"] == "core_mask":
+                            format_core_mask = True
+                            core_mask = cpu_resource.allocate_siblings_mask(1)
+                    
+                        if format_core_mask:
+                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], core_mask)
+                        else:
+                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"])
 
 
     #end of methods for thread config
@@ -174,6 +199,9 @@ class CfgData:
             env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
             if env_value is not None:
                a_dpdk_cfg.pce_bus_ru0vf0_val, a_dpdk_cfg.pce_bus_ru0vf1_val = env_value.split(',', 1)
+            else:
+                #invalid config
+                sys.exit("The evn varible is not set in xran test mode ")
         else: 
             a_dpdk_cfg.mem_size_str = cfg_field
             a_dpdk_cfg.mem_size_val = cfg_val
@@ -203,30 +231,45 @@ class CfgData:
                 xml_tree = LET.parse(f, parser) 
 
                 root = xml_tree.getroot()
-                root_dpdks = root.find('DPDK')
+
+                
                 #print(LET.tostring(root_threads, encoding="unicode", pretty_print = True))
 
                 for dpdk in dpdks:
-                    xml_dpdk_mem_size = root_dpdks.find(dpdk.mem_size_str)
-                    if xml_dpdk_mem_size == None:
-                        print("Cound not find the existing dpdk memory size config")
-                    else: 
-                        xml_dpdk_mem_size.text = str(dpdk.mem_size_val)
-                        #print("Update thread: ", thread.thread_name, thread.get_xml_text_value_str())
+                    if(dpdk.test_mode_xran):
+                        xml_pci = root.find(dpdk.pci_bus_ru0vf0_str)
+                        if xml_pci is None:
+                            print("Cound not find the existing PciBusAddoRu0Vf0 config")
+                        else:
+                            xml_pci.text = dpdk.pci_bus_ru0vf1_val
+                        xml_pci_1 = root.find(dpdk.pci_bus_ru0vf1_str)
+                        if xml_pci_1 is None:
+                            print("Cound not find the existing PciBusAddoRu0Vf1 config")
+                        else:
+                            xml_pci_1.text = dpdk.pci_bus_ru0vf1_val
+                            
+                    else:
+                        root_dpdks = root.find('DPDK')
+                        xml_dpdk_mem_size = root_dpdks.find(dpdk.mem_size_str)
+                        if xml_dpdk_mem_size == None:
+                            print("Cound not find the existing dpdk memory size config")
+                        else: 
+                            xml_dpdk_mem_size.text = str(dpdk.mem_size_val)
+                            #print("Update thread: ", thread.thread_name, thread.get_xml_text_value_str())
 
-                    #update the mode
-                    xml_dpdk_fec_mode = root_dpdks.find(CfgDpdk.base_band_fec_mode_str)
-                    if xml_dpdk_fec_mode == None:
-                        print("Cound not find the existing dpdk fec mode config")
-                    else:
-                        xml_dpdk_fec_mode.text = str(dpdk.base_band_fec_mode_val)
-                    
-                    xml_dpdk_device = root_dpdks.find(CfgDpdk.base_band_device_str)
-                    if xml_dpdk_device == None:
-                        print("Cound not find the existing dpdk device config")
-                    else:
-                        #print("dpdk device value: ", dpdk.base_band_device_val)
-                        xml_dpdk_device.text = dpdk.base_band_device_val
+                        #update the mode
+                        xml_dpdk_fec_mode = root_dpdks.find(CfgDpdk.base_band_fec_mode_str)
+                        if xml_dpdk_fec_mode == None:
+                            print("Cound not find the existing dpdk fec mode config")
+                        else:
+                            xml_dpdk_fec_mode.text = str(dpdk.base_band_fec_mode_val)
+                        
+                        xml_dpdk_device = root_dpdks.find(CfgDpdk.base_band_device_str)
+                        if xml_dpdk_device == None:
+                            print("Cound not find the existing dpdk device config")
+                        else:
+                            #print("dpdk device value: ", dpdk.base_band_device_val)
+                            xml_dpdk_device.text = dpdk.base_band_device_val
 
                 xml_tree.write(cls.dict_cfgfile_paths[cfg_file_name] + cfg_file_name)
 
