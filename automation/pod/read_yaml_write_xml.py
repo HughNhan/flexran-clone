@@ -47,6 +47,7 @@ class CfgDpdk:
     test_mode_xran: bool = field(init=True, default=False)
 
     #timer mode cfg fields
+    #PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100=0000:b6:01.4
     env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100" 
 
     cfg_file_name: str = field(init=False, default=None)
@@ -161,14 +162,11 @@ class CfgData:
                     for thread in threads:
                         #print(thread, ": ", threads[thread]["pri"])
                         cfg_name = cfg + ".xml"
-                        if "format" in threads[thread]  and threads[thread]["format"] == "core_mask":
-                            format_core_mask = True
+                        if "format" in threads[thread].keys()  and threads[thread]["format"] == "core_mask":
                             core_mask = cpu_resource.allocate_siblings_mask(1)
-                    
-                        if format_core_mask:
                             cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], core_mask)
                         else:
-                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"])
+                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], None)
 
 
     #end of methods for thread config
@@ -318,7 +316,7 @@ class CfgData:
         for num in yaml_cfg_file_paths:
             for file_name in yaml_cfg_file_paths[num]:
                 cls.dict_cfgfile_paths[file_name + ".xml"] = yaml_cfg_file_paths[num][file_name] 
-        print(cls.dict_cfgfile_paths)           
+        #print(cls.dict_cfgfile_paths)           
  
     @classmethod
     def process_cfg_xml(cls, yaml_file_name, cpu_resource: CpuResource):
