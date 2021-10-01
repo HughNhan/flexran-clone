@@ -83,7 +83,11 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
+<<<<<<< HEAD
     exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
+=======
+    #exec_commands(pod_name, core_v1)
+>>>>>>> 4c61c1a... Updating after rebase with ci
 
 def copy_files(pod_name, destination, files):
     print('\nCopying files to pod \'' + pod_name + '\':')
@@ -157,7 +161,11 @@ def exec_updates(name, api_instance, destination, testmac,
                   _preload_content=False)
 
     update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg
+<<<<<<< HEAD
 
+=======
+    print(update_command)
+>>>>>>> 4c61c1a... Updating after rebase with ci
     if no_sibling:
         update_command = update_command + ' --no_sibling'
 
