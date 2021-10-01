@@ -89,8 +89,8 @@ class CfgData:
         return cls.monk_cpu_id
 
     @classmethod 
-    def load_thread_cfg(cls, cfg_file_name: str, thread_name: str, thread_id: int, pri: int, thread_mask: Optional[str]):
-        #print(cfg_file_name, ": ", thread_name, "pri: ", pri)
+    def load_thread_cfg(cls, cfg_file_name: str, thread_name: str, thread_id: int, pri: int, xran: bool, thread_mask: Optional[str]):
+        print("load_thread_cfg", cfg_file_name, ": ", thread_name, "pri: ", pri)
         if thread_name not in cls.dict_thread_name_id.keys():
             id = thread_id 
             cls.dict_thread_name_id[thread_name] = id
@@ -100,6 +100,9 @@ class CfgData:
         if thread_mask is not None:
             athread.thread_id = None
             athread.thread_mask = thread_mask
+
+        athread.test_mode_xran = xran
+        
 
         if cfg_file_name not in cls.dict_list_cfg_threads.keys():
             cls.dict_list_cfg_threads[cfg_file_name] = [athread] 
@@ -111,6 +114,7 @@ class CfgData:
     def read_and_update_threads_cfg_xml(cls, cfg_file_name: str, threads: List[CfgThread]):
         assert(cfg_file_name in cls.dict_cfgfile_paths.keys())
 
+        print("read_and_update_thread: ", cfg_file_name)
         try:
             with open(cls.dict_cfgfile_paths[cfg_file_name] + cfg_file_name, encoding="utf8") as f:
 
@@ -144,29 +148,32 @@ class CfgData:
 
     @classmethod
     def read_threads_yaml(cls, yaml_data: Any, cpu_resource: CpuResource):
-            yaml_threads = yaml_data["Threads"]
+        print("read_threads_yaml")
+        yaml_threads = yaml_data["Threads"]
 
-            #print(yaml_threads)
-            for num in yaml_threads:
-                #print (num, ": ", yaml_threads[num])
-                cfg_objs = yaml_threads[num]
-                thread_id = cpu_resource.allocate_whole_core()
-                if "test_mode" in cfg_objs.keys():
-                    if cfg_objs["test_mode"] == "xran":
-                        test_mode_xran = True
-                for cfg in cfg_objs:
-                    #print(cfg, ": ", cfg_objs[cfg])
-                    if cfg_objs[cfg] == "test_mode":
-                        continue
-                    threads = cfg_objs[cfg]
-                    for thread in threads:
-                        #print(thread, ": ", threads[thread]["pri"])
-                        cfg_name = cfg + ".xml"
-                        if "format" in threads[thread].keys()  and threads[thread]["format"] == "core_mask":
-                            core_mask = cpu_resource.allocate_siblings_mask(1)
-                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], core_mask)
-                        else:
-                            cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], None)
+        #print(yaml_threads)
+        for num in yaml_threads:
+            print (num, ": ", yaml_threads[num])
+            cfg_objs = yaml_threads[num]
+            thread_id = cpu_resource.allocate_whole_core()
+            test_mode_xran = False
+            if "test_mode" in cfg_objs.keys():
+                if cfg_objs["test_mode"] == "xran":
+                    test_mode_xran = True
+            for cfg in cfg_objs:
+                print(cfg, ": ", cfg_objs[cfg])
+                if cfg == "test_mode":
+                    continue
+                threads = cfg_objs[cfg]
+                for thread in threads:
+                    cfg_name = cfg + ".xml"
+                    print(cfg_name, " ", thread, ": ", threads[thread]["pri"])
+                    if "format" in threads[thread].keys():
+                        core_mask = cpu_resource.allocate_siblings_mask(1)
+                        print(thread, ": ", threads[thread]["pri"], " mask:", core_mask)
+                        cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], test_mode_xran, core_mask)
+                    else:
+                        cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], test_mode_xran, None)
 
 
     #end of methods for thread config
@@ -174,18 +181,19 @@ class CfgData:
     #start of methods for dpdk config
     @classmethod
     def read_dpdks_yaml(cls, yaml_data: Any):
-            yaml_dpdks = yaml_data["Dpdk_cfgs"]
-            dpdks = yaml_data["Dpdk_cfgs"]
+        print("read_dpdks_yaml")
+        yaml_dpdks = yaml_data["Dpdk_cfgs"]
+        dpdks = yaml_data["Dpdk_cfgs"]
 
-            #print(yaml_threads)
-            for num in dpdks:
-                #print (num, ": ", yaml_threads[num])
-                cfg_objs = dpdks[num]
-                for cfg in cfg_objs:
-                    dpdk = cfg_objs[cfg]
-                    cfg_name = cfg + ".xml"
-                    for dpdk_field in dpdk:
-                        cls.load_dpdk_cfg(cfg_name, dpdk_field, dpdk[dpdk_field])
+        #print(yaml_threads)
+        for num in dpdks:
+            #print (num, ": ", yaml_threads[num])
+            cfg_objs = dpdks[num]
+            for cfg in cfg_objs:
+                dpdk = cfg_objs[cfg]
+                cfg_name = cfg + ".xml"
+                for dpdk_field in dpdk:
+                    cls.load_dpdk_cfg(cfg_name, dpdk_field, dpdk[dpdk_field])
 
     @classmethod
     def load_dpdk_cfg(cls, cfg_file: str, cfg_field: str, cfg_val: int):
@@ -285,7 +293,7 @@ class CfgData:
     @classmethod
     def read_cfg_yaml(cls, cfg_yaml, cpu_resource: CpuResource):
 
-        #print("read_cfg_yaml: ", cfg_yaml)
+        print("read_cfg_yaml: ", cfg_yaml)
         try:
             with open(cfg_yaml) as fsrc:
 
@@ -311,7 +319,7 @@ class CfgData:
 
     @classmethod
     def read_cfg_file_paths_yaml(cls, yaml_data: Any):
-        #print("read_cfg_file_paths_yaml")
+        print("read_cfg_file_paths_yaml")
         yaml_cfg_file_paths = yaml_data["Cfg_file_paths"]
         for num in yaml_cfg_file_paths:
             for file_name in yaml_cfg_file_paths[num]:
