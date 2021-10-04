@@ -41,10 +41,10 @@
     <PciBusAddoRu0Vf3>0000:51:01.3</PciBusAddoRu0Vf3>
 
     <!-- remote O-RU 0 Eth Link 0 VF0, VF1, VF2, VF3 -->
-    <oRuRem0Mac0>00:11:22:33:00:01<oRuRem0Mac0>
-    <oRuRem0Mac1>00:11:22:33:00:11<oRuRem0Mac1>
-    <oRuRem0Mac2>00:11:22:33:00:21<oRuRem0Mac2>
-    <oRuRem0Mac3>00:11:22:33:00:31<oRuRem0Mac3>
+    <oRuRem0Mac0>00:11:22:33:00:01</oRuRem0Mac0>
+    <oRuRem0Mac1>00:11:22:33:00:11</oRuRem0Mac1>
+    <oRuRem0Mac2>00:11:22:33:00:21</oRuRem0Mac2>
+    <oRuRem0Mac3>00:11:22:33:00:31</oRuRem0Mac3>
 
     <!--  Number of cells (CCs) running on this O-RU  [1 - Cell , 2 - Cells, 3 - Cells , 4 - Cells ] -->
     <oRu0NumCc>12</oRu0NumCc>
@@ -69,7 +69,7 @@
     <!-- Second Phy instance ID mapped to this O-RU CC1 -->
     <oRu0Cc9PhyId>9</oRu0Cc9PhyId>
     <!-- Third Phy instance ID mapped to this O-RU CC2  -->
-    <oRu0Cc10PhyId>10</oRuCc10PhyId>
+    <oRu0Cc10PhyId>10</oRu0Cc10PhyId>
     <!-- Forth Phy instance ID mapped to this O-RU CC3  -->
     <oRu0Cc11PhyId>11</oRu0Cc11PhyId>
 
@@ -152,4 +152,3 @@
     <oRu0PrbElemUl0>0,53,0,14,1,1,1,9,1,0,0</oRu0PrbElemUl0>
     <oRu0PrbElemUl1>53,53,0,14,2,1,1,9,1,0,0</oRu0PrbElemUl1>
 </XranConfig>
-

@@ -36,7 +36,7 @@ class CfgThread:
         self.thread_pri = pri
     
     def get_xml_text_value_str(self) -> str :
-        if self.use_thread_mask:
+        if self.thread_mask:
             return(self.thread_mask + ", " + str(self.thread_pri) + ", 0")
         return(str(self.thread_id) + ", " + str(self.thread_pri) + ", 0")
 
@@ -90,7 +90,7 @@ class CfgData:
 
     @classmethod 
     def load_thread_cfg(cls, cfg_file_name: str, thread_name: str, thread_id: int, pri: int, xran: bool, thread_mask: Optional[str]):
-        print("load_thread_cfg", cfg_file_name, ": ", thread_name, "pri: ", pri)
+        #print("load_thread_cfg: ", cfg_file_name, ": ", thread_name, "pri: ", pri, "xran mode: ", xran)
         if thread_name not in cls.dict_thread_name_id.keys():
             id = thread_id 
             cls.dict_thread_name_id[thread_name] = id
@@ -98,7 +98,6 @@ class CfgData:
         athread = CfgThread() 
         athread.fill_cfg(cfg_file_name, cls.dict_thread_name_id[thread_name], thread_name, pri)
         if thread_mask is not None:
-            athread.thread_id = None
             athread.thread_mask = thread_mask
 
         athread.test_mode_xran = xran
@@ -114,7 +113,7 @@ class CfgData:
     def read_and_update_threads_cfg_xml(cls, cfg_file_name: str, threads: List[CfgThread]):
         assert(cfg_file_name in cls.dict_cfgfile_paths.keys())
 
-        print("read_and_update_thread: ", cfg_file_name)
+        #print("read_and_update_threads_cfg_xml: ", cfg_file_name)
         try:
             with open(cls.dict_cfgfile_paths[cfg_file_name] + cfg_file_name, encoding="utf8") as f:
 
@@ -122,19 +121,30 @@ class CfgData:
                 xml_tree = LET.parse(f, parser) 
 
                 root = xml_tree.getroot()
-                root_threads = root.find('Threads')
-                #print(LET.tostring(root_threads, encoding="unicode", pretty_print = True))
+                root_threads = None 
 
                 for thread in threads:
-                    xml_thread = root_threads.find(thread.thread_name)
+                    xml_thread = None
+                    if thread.test_mode_xran is True:
+                        xml_thread = root.find(thread.thread_name)
+                    else:
+                        if root_threads is None:
+                            root_threads = root.find('Threads')
+                        xml_thread = root_threads.find(thread.thread_name)
+
                     if xml_thread == None:
-                        print("Cound not find the existing thread configuration")
+                        print("Cound not find the existing thread configuration: ", thread.thread_name)
+                        #print(LET.tostring(root, encoding="unicode", pretty_print = True))
                         continue
 
                     xml_thread.text = thread.get_xml_text_value_str()
                     #print("Update thread: ", thread.thread_name, thread.get_xml_text_value_str())
-                
-                xml_tree.write(cls.dict_cfgfile_paths[cfg_file_name] + cfg_file_name)
+
+                try:  
+                    xml_tree.write(cls.dict_cfgfile_paths[cfg_file_name] + cfg_file_name)
+                except Exception as e:
+                    print("Could not write the thread xml file: %s" %e)
+
 
         except Exception as e:
             sys.exit("Could not open the thread xml file: %s" %e)
@@ -148,12 +158,12 @@ class CfgData:
 
     @classmethod
     def read_threads_yaml(cls, yaml_data: Any, cpu_resource: CpuResource):
-        print("read_threads_yaml")
+        #print("read_threads_yaml")
         yaml_threads = yaml_data["Threads"]
 
         #print(yaml_threads)
         for num in yaml_threads:
-            print (num, ": ", yaml_threads[num])
+            #print (num, ": ", yaml_threads[num])
             cfg_objs = yaml_threads[num]
             thread_id = cpu_resource.allocate_whole_core()
             test_mode_xran = False
@@ -161,16 +171,16 @@ class CfgData:
                 if cfg_objs["test_mode"] == "xran":
                     test_mode_xran = True
             for cfg in cfg_objs:
-                print(cfg, ": ", cfg_objs[cfg])
+                #print(cfg, ": ", cfg_objs[cfg])
                 if cfg == "test_mode":
                     continue
                 threads = cfg_objs[cfg]
                 for thread in threads:
                     cfg_name = cfg + ".xml"
-                    print(cfg_name, " ", thread, ": ", threads[thread]["pri"])
+                    #print(cfg_name, " ", thread, ": ", threads[thread]["pri"])
                     if "format" in threads[thread].keys():
                         core_mask = cpu_resource.allocate_siblings_mask(1)
-                        print(thread, ": ", threads[thread]["pri"], " mask:", core_mask)
+                        #print(thread, ": ", threads[thread]["pri"], " mask:", core_mask)
                         cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], test_mode_xran, core_mask)
                     else:
                         cls.load_thread_cfg(cfg_name, thread, thread_id, threads[thread]["pri"], test_mode_xran, None)
@@ -200,7 +210,9 @@ class CfgData:
         a_dpdk_cfg = CfgDpdk()
         a_dpdk_cfg.cfg_file_name = cfg_file
 
-        if cfg_field is "test_mode":
+        print("load_dpdk_cfg: ", cfg_field)
+        if cfg_field == "test_mode":
+            print("test_mode: xran ")
             a_dpdk_cfg.test_mode_xran = True
             env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
             if env_value is not None:
@@ -228,6 +240,8 @@ class CfgData:
 
     @classmethod
     def update_dpdk_cfg_xml(cls, cfg_file_name: str, dpdks: List[CfgDpdk]):
+        print("update_dpdk_cfg_xml:", cfg_file_name)
+        #print(cls.dict_cfgfile_paths)
         assert(cfg_file_name in cls.dict_cfgfile_paths.keys())
 
         try:
@@ -242,12 +256,14 @@ class CfgData:
                 #print(LET.tostring(root_threads, encoding="unicode", pretty_print = True))
 
                 for dpdk in dpdks:
-                    if(dpdk.test_mode_xran):
+                    if dpdk.test_mode_xran:
+                        print("xran mode")
                         xml_pci = root.find(dpdk.pci_bus_ru0vf0_str)
                         if xml_pci is None:
                             print("Cound not find the existing PciBusAddoRu0Vf0 config")
                         else:
                             xml_pci.text = dpdk.pci_bus_ru0vf1_val
+                       
                         xml_pci_1 = root.find(dpdk.pci_bus_ru0vf1_str)
                         if xml_pci_1 is None:
                             print("Cound not find the existing PciBusAddoRu0Vf1 config")

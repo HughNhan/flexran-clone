@@ -25,7 +25,7 @@ Threads:
     xrancfg_sub6_oru:
       xRANThread:
         pri: 94
-      xRANWorkder:
+      xRANWorker:
         pri: 95
         format: core_mask
 
@@ -33,7 +33,7 @@ Threads:
 
 Dpdk_cfgs:
   1:
-    phycfg_timer:
+    phycfg_xran:
       dpdkMemorySize: 4096
   2:
     xrancfg_sub6_oru:
