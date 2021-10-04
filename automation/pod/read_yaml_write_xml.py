@@ -191,7 +191,7 @@ class CfgData:
     #start of methods for dpdk config
     @classmethod
     def read_dpdks_yaml(cls, yaml_data: Any):
-        print("read_dpdks_yaml")
+        #print("read_dpdks_yaml")
         yaml_dpdks = yaml_data["Dpdk_cfgs"]
         dpdks = yaml_data["Dpdk_cfgs"]
 
@@ -210,9 +210,9 @@ class CfgData:
         a_dpdk_cfg = CfgDpdk()
         a_dpdk_cfg.cfg_file_name = cfg_file
 
-        print("load_dpdk_cfg: ", cfg_field)
+        #print("load_dpdk_cfg: ", cfg_field)
         if cfg_field == "test_mode":
-            print("test_mode: xran ")
+            #print("test_mode: xran ")
             a_dpdk_cfg.test_mode_xran = True
             env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
             if env_value is not None:
@@ -240,7 +240,7 @@ class CfgData:
 
     @classmethod
     def update_dpdk_cfg_xml(cls, cfg_file_name: str, dpdks: List[CfgDpdk]):
-        print("update_dpdk_cfg_xml:", cfg_file_name)
+        #print("update_dpdk_cfg_xml:", cfg_file_name)
         #print(cls.dict_cfgfile_paths)
         assert(cfg_file_name in cls.dict_cfgfile_paths.keys())
 
@@ -257,7 +257,7 @@ class CfgData:
 
                 for dpdk in dpdks:
                     if dpdk.test_mode_xran:
-                        print("xran mode")
+                        #print("xran mode")
                         xml_pci = root.find(dpdk.pci_bus_ru0vf0_str)
                         if xml_pci is None:
                             print("Cound not find the existing PciBusAddoRu0Vf0 config")
@@ -289,7 +289,7 @@ class CfgData:
                         xml_dpdk_device = root_dpdks.find(CfgDpdk.base_band_device_str)
                         if xml_dpdk_device == None:
                             print("Cound not find the existing dpdk device config")
-                        else:
+                        elif dpdk.base_band_device_val == 1:
                             #print("dpdk device value: ", dpdk.base_band_device_val)
                             xml_dpdk_device.text = dpdk.base_band_device_val
 
@@ -309,7 +309,7 @@ class CfgData:
     @classmethod
     def read_cfg_yaml(cls, cfg_yaml, cpu_resource: CpuResource):
 
-        print("read_cfg_yaml: ", cfg_yaml)
+        #print("read_cfg_yaml: ", cfg_yaml)
         try:
             with open(cfg_yaml) as fsrc:
 
@@ -335,7 +335,7 @@ class CfgData:
 
     @classmethod
     def read_cfg_file_paths_yaml(cls, yaml_data: Any):
-        print("read_cfg_file_paths_yaml")
+        #print("read_cfg_file_paths_yaml")
         yaml_cfg_file_paths = yaml_data["Cfg_file_paths"]
         for num in yaml_cfg_file_paths:
             for file_name in yaml_cfg_file_paths[num]:
