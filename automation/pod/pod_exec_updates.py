@@ -78,10 +78,10 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
-    #exec_commands(pod_name, core_v1)
+    exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
 
 def copy_files(pod_name, destination, files):
-    print('Copying files to pod \'' + pod_name + '\':')
+    print('\nCopying files to pod \'' + pod_name + '\':')
     for file in files:
         output = subprocess.check_output(
                 ['oc', 'cp', file, pod_name + ':' + destination])
@@ -121,7 +121,7 @@ def check_and_start_pod(name, api_instance):
 
     if not resp or resp.status.phase != 'Running':
         print("Pod %s does not exist. Creating it..." % name)
-        with open("pod_flexran_sw.yaml", "r") as f:
+        with open("pod_flexran_n3000.yaml", "r") as f:
             pod_manifest = yaml.safe_load(f)
         resp = api_instance.create_namespaced_pod(body=pod_manifest,
                                                   namespace='default')
@@ -147,7 +147,7 @@ def exec_updates(name, api_instance, destination, testmac,
                   _preload_content=False)
 
     update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg
-    print(update_command)
+
     if no_sibling:
         update_command = update_command + ' --no_sibling'
 
@@ -174,12 +174,12 @@ def exec_updates(name, api_instance, destination, testmac,
     if "Files updated." in output:
         if DEBUG:
             print(output)
-        print("Finished updating files on pod")
+        print("Finished updating files on pod.\n")
     else:
         print(output)
         sys.exit(1)
 
-def exec_commands(name, api_instance):
+def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -191,7 +191,7 @@ def exec_commands(name, api_instance):
                   _preload_content=False)
     commands = [
         "source /opt/flexran/auto/env.src",
-        "cd /opt/flexran/bin/nr5g/gnb/l1",
+        "cd " + l1,
         "./l1.sh -e",
     ]
 
@@ -208,7 +208,7 @@ def exec_commands(name, api_instance):
     resp.run_forever(5)
     output = resp.read_stdout()
     if "welcome" in output:
-        print("l1app ready")
+        print("l1app ready\n")
     else:
         print(output)
         sys.exit(1)
@@ -222,8 +222,8 @@ def exec_commands(name, api_instance):
                   _preload_content=False)
     commands = [
         "source /opt/flexran/auto/env.src",
-        "cd /opt/flexran/bin/nr5g/gnb/testmac",
-        "./l2.sh --testfile=cascade_lake-sp/clxsp_mu1_100mhz_4x4_hton.cfg",
+        "cd " + testmac,
+        "./l2.sh --testfile=" + testfile,
     ]
 
     while testmac_resp.is_open():
@@ -236,20 +236,42 @@ def exec_commands(name, api_instance):
         else:
             break
 
+    l1_output = output
+
     testmac_resp.run_forever(5)
     output = testmac_resp.read_stdout()
     if "welcome" in output:
-        print("testmac ready")
+        print("Testmac ready\n")
     else:
         print(output)
         sys.exit(1)
 
+    print('Running tests...')
+
+    testmac_output = ''
+
     while testmac_resp.is_open():
         testmac_resp.run_forever(3)
-        output = testmac_resp.read_stdout()
-        result = re.search(r"All Tests Completed.*\n", output)
+        testmac_output = testmac_output + testmac_resp.read_stdout()
+        l1_output = l1_output + resp.read_stdout()
+        result = re.search(r"All Tests Completed.*\n", testmac_output)
         if result:
             print(result.group())
+            print("Copying stat file (l1_mlog_stats.txt) to current directory...")
+            copy_output = subprocess.check_output(
+                    ['oc', 'cp', pod_name + ':' + l1 + '/l1_mlog_stats.txt', "./l1_mlog_stats.txt"])
+            #print(output)
+            print("Writing l1 output (l1.txt) to current directory...")
+            l1_out = open('l1.txt', 'w')
+            out = l1_out.write(l1_output)
+            l1_out.close()
+
+            print("Writing testfile output (testmac.txt) to current directory...")
+            test_output = open('testmac.txt', 'w')
+            out = test_output.write(testmac_output)
+            test_output.close()
+
+            print("Completed.")
             break
 
     resp.write_stdin("exit\n")

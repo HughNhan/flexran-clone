@@ -1,8 +1,8 @@
 Cfg_file_paths:
   1:
-    phycfg_timer: cfg_examples/
+    phycfg_timer: /opt/flexran/bin/nr5g/gnb/l1/
   2:
-    testmac_cfg: cfg_examples/
+    testmac_cfg: /opt/flexran/bin/nr5g/gnb/testmac/
 
 Threads:
   1:
