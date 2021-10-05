@@ -59,6 +59,7 @@ class CfgDpdk:
     base_band_fec_mode_val: int = field(init=False, default=None)
     base_band_device_str: str = "dpdkBasebandDevice"
     base_band_device_val: str = field(init=False, default="0000:1f:00.1")
+<<<<<<< HEAD
 
     #xran mode cfg fields
     #PCIDEVICE_OPENSHIFT_IO_INTELNICS0=0000:65:02.5,0000:65:02.6
@@ -70,6 +71,8 @@ class CfgDpdk:
     pci_bus_ru0vf1_val: str = field(init=False, default="0000:1a:02.1")
 
 
+=======
+>>>>>>> 3c520d2... Working pod creation -> saving ouput for timer mode
 
 class CfgData:
     # file paths
@@ -81,6 +84,15 @@ class CfgData:
     monk_cpu_id = 0
 
     # dpdk cfgs
+<<<<<<< HEAD
+=======
+    #phycfg_timer_cfg_xml = 'phycfg_timer.xml'
+    #phycfg_timer_cfg_xml = 'pod_testmac.xml'
+    # ACC100
+    #env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100"
+    # N3000
+    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_5G"
+>>>>>>> 3c520d2... Working pod creation -> saving ouput for timer mode
     dict_list_cfg_dpdks: Dict[str, List[CfgDpdk]] = {}
 
     #start of methods for thread config
