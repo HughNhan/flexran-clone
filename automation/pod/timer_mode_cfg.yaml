@@ -35,3 +35,4 @@ Dpdk_cfgs:
   1:
     phycfg_timer:
       dpdkMemorySize: 4096
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_5G
