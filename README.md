@@ -60,10 +60,6 @@ To start the actual test, in the testmac console, `runall 0`
 
 ![test topology](https://docs.google.com/drawings/d/e/2PACX-1vRWU499sFr2jgnzafd8NlSMGo-eHWDef9fzB6Ivzme-6KAsLZvC3ckBgCzA7nV-YlZJcLRMdCWOsW5e/pub?w=960&h=720)
 
-## OpenShift FlexRAN test topology
-
-![test topology](https://docs.google.com/drawings/d/e/2PACX-1vRWU499sFr2jgnzafd8NlSMGo-eHWDef9fzB6Ivzme-6KAsLZvC3ckBgCzA7nV-YlZJcLRMdCWOsW5e/pub?w=960&h=720)
-
 ## add labels to the worker node
 
 ```
