@@ -35,6 +35,7 @@ Dpdk_cfgs:
   1:
     phycfg_xran:
       dpdkMemorySize: 4096
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_5G
   2:
     xrancfg_sub6_oru:
       test_mode: xran

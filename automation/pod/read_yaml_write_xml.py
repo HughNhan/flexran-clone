@@ -48,11 +48,12 @@ class CfgDpdk:
 
     #timer mode cfg fields
     #PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100=0000:b6:01.4
-    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100" 
+    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100"
 
     cfg_file_name: str = field(init=False, default=None)
     mem_size_str: str = field(init=False, default=None) 
     mem_size_val: int = field(init=False, default=None)
+    env_acc_mode_str_set: bool = field(init=False, default=False)
 
     base_band_fec_mode_str: str = "dpdkBasebandFecMode" 
     base_band_fec_mode_val: int = field(init=False, default=None)
@@ -125,7 +126,7 @@ class CfgData:
 
                 for thread in threads:
                     xml_thread = None
-                    if thread.test_mode_xran is True:
+                    if thread.test_mode_xran == True:
                         xml_thread = root.find(thread.thread_name)
                     else:
                         if root_threads is None:
@@ -206,37 +207,57 @@ class CfgData:
                     cls.load_dpdk_cfg(cfg_name, dpdk_field, dpdk[dpdk_field])
 
     @classmethod
-    def load_dpdk_cfg(cls, cfg_file: str, cfg_field: str, cfg_val: int):
-        a_dpdk_cfg = CfgDpdk()
-        a_dpdk_cfg.cfg_file_name = cfg_file
+    def load_dpdk_cfg(cls, cfg_file: str, cfg_field: str, cfg_val: Any):
+        a_dpdk_cfg = None 
+        existing = False
+        if cfg_file not in cls.dict_list_cfg_dpdks.keys():
+            a_dpdk_cfg = CfgDpdk()
+            a_dpdk_cfg.cfg_file_name = cfg_file
+        else:
+            existing = True
+            a_dpdk_cfg = cls.dict_list_cfg_dpdks[cfg_file][0]
 
-        #print("load_dpdk_cfg: ", cfg_field)
+        #print("#####load_dpdk_cfg: ", cfg_field, "val: ", cfg_val)
         if cfg_field == "test_mode":
             #print("test_mode: xran ")
             a_dpdk_cfg.test_mode_xran = True
             env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
             if env_value is not None:
-               a_dpdk_cfg.pce_bus_ru0vf0_val, a_dpdk_cfg.pce_bus_ru0vf1_val = env_value.split(',', 1)
+               a_dpdk_cfg.pci_bus_ru0vf0_val, a_dpdk_cfg.pci_bus_ru0vf1_val = env_value.split(',', 1)
             else:
                 #invalid config
                 sys.exit("The evn varible is not set in xran test mode ")
-        else: 
-            a_dpdk_cfg.mem_size_str = cfg_field
-            a_dpdk_cfg.mem_size_val = cfg_val
-
-            env_value = get_env_variable(CfgDpdk.env_acc_mode_str)
+        elif cfg_field == "dpdkEnvModeStr": 
+            env_value = get_env_variable(cfg_val)
+            #print("env str: ", cfg_val)
+            #print("env value: ", env_value)
             if(env_value is None):
                 a_dpdk_cfg.base_band_fec_mode_val = 0
             else:
                 a_dpdk_cfg.base_band_fec_mode_val = 1
                 a_dpdk_cfg.base_band_device_val = env_value
-                #print("env value ", env_value)
+                a_dpdk_cfg.env_acc_mode_str_set = True
+                #print("passed in env value ", env_value)
+        else:
+            a_dpdk_cfg.mem_size_str = cfg_field
+            a_dpdk_cfg.mem_size_val = cfg_val
+
+            if a_dpdk_cfg.env_acc_mode_str_set == False:
+                #print("evn str is not set")
+                env_value = get_env_variable(CfgDpdk.env_acc_mode_str)
+                if(env_value is None):
+                    a_dpdk_cfg.base_band_fec_mode_val = 0
+                else:
+                    a_dpdk_cfg.base_band_fec_mode_val = 1
+                    a_dpdk_cfg.base_band_device_val = env_value
+                    #print("env value ", env_value)
 
 
         if cfg_file not in cls.dict_list_cfg_dpdks.keys():
             cls.dict_list_cfg_dpdks[cfg_file] = [a_dpdk_cfg] 
-        else:
+        elif existing == False:
             cls.dict_list_cfg_dpdks[cfg_file].append(a_dpdk_cfg)
+        #print (cls.dict_list_cfg_dpdks)
 
     @classmethod
     def update_dpdk_cfg_xml(cls, cfg_file_name: str, dpdks: List[CfgDpdk]):
@@ -262,13 +283,15 @@ class CfgData:
                         if xml_pci is None:
                             print("Cound not find the existing PciBusAddoRu0Vf0 config")
                         else:
-                            xml_pci.text = dpdk.pci_bus_ru0vf1_val
+                            xml_pci.text = dpdk.pci_bus_ru0vf0_val
+                            #print("text", xml_pci.text)
                        
                         xml_pci_1 = root.find(dpdk.pci_bus_ru0vf1_str)
                         if xml_pci_1 is None:
                             print("Cound not find the existing PciBusAddoRu0Vf1 config")
                         else:
                             xml_pci_1.text = dpdk.pci_bus_ru0vf1_val
+                            #print("text_1", xml_pci_1.text)
                             
                     else:
                         root_dpdks = root.find('DPDK')
@@ -289,7 +312,7 @@ class CfgData:
                         xml_dpdk_device = root_dpdks.find(CfgDpdk.base_band_device_str)
                         if xml_dpdk_device == None:
                             print("Cound not find the existing dpdk device config")
-                        elif dpdk.base_band_device_val == 1:
+                        elif dpdk.base_band_fec_mode_val == 1:
                             #print("dpdk device value: ", dpdk.base_band_device_val)
                             xml_dpdk_device.text = dpdk.base_band_device_val
 
