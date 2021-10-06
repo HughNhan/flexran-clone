@@ -17,6 +17,6 @@ bind_driver () {
 }
 
 get_mcp_progress_status () {
-    status=$(oc get mcp | awk '/worker-cnf/{if(match($2, /rendered-/)){print $3} else{print $4}}')
+    status=$(oc get mcp | awk '/worker-cnf/{if(match($2, /rendered-/)){print $4} else{print $3}}')
     echo ${status}
 }
