@@ -7,12 +7,11 @@ source ./functions.sh
 
 parse_args $@
 
-echo "Removing performance profile ..."
-oc delete -f ${MANIFEST_DIR}/performance_profile.yaml
+echo "Removing acc100 VF ..."
+oc delete -f ${MANIFEST_DIR}/create-vf-acc100.yaml
+echo "Removing acc100 VF: done"
 
 if [[ "${WAIT_MCP}" == "true" ]]; then
     wait_mcp
 fi
-
-echo "Removing performance profile: done"
 
