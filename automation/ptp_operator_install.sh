@@ -7,6 +7,8 @@ source ./functions.sh
 
 parse_args $@
 
+mkdir -p ${MANIFEST_DIR}/
+
 ###### install ptp operator #####
 # skip if ptp operator subscription already exists 
 if ! oc get Subscription ptp-operator-subscription -n openshift-ptp 2>/dev/null; then 
@@ -20,7 +22,6 @@ fi
 wait_pod_in_namespace openshift-ptp
 
 echo "generating ${MANIFEST_DIR}/ptp-config.yaml ..."
-mkdir -p ${MANIFEST_DIR}/
 envsubst < templates/ptp-config.yaml.template > ${MANIFEST_DIR}/ptp-config.yaml
 echo "generating ${MANIFEST_DIR}/ptp-config.yaml: done"
 

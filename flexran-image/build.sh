@@ -1,13 +1,10 @@
 #!/bin/sh
 
-FLEXRAN_DIR=${FLEXRAN_DIR:-/opt/flexran}
-DPDK_DIR=${DPDK_DIR:-/opt/dpdk}
-STAGING_DIR=${STAGING_DIR:-${HOME}/staging}
-ICC_DIR=${ICC_DIR:-/opt/intel/system_studio_2019}
-IMAGE_REPO=${IMAGE_REPO:-10.16.231.128:5000}
-FLEXRAN_VERSION=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
-
 set -eu
+
+source ../automation/setting.env
+
+FLEXRAN_VERSION=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
 
 print_usage() {
     declare -A arr
@@ -84,6 +81,7 @@ build() {
 
 push() {
     build
+    podman login -u ${REGISTRY_USER} -p ${REGISTRY_PASSWORD} ${IMAGE_REPO}
     echo "pushing container image to repo ${IMAGE_REPO}"
     podman push ${IMAGE_REPO}/flexran:${FLEXRAN_VERSION}
 }

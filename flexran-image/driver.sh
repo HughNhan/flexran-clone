@@ -37,6 +37,7 @@ bind_driver () {
             if ! echo "${device_id}" > /sys/bus/pci/drivers/${driver}/new_id 2>&1 >/dev/null; then
                 true
             fi
+            sleep 1
             if [[ ! -e /sys/bus/pci/drivers/${driver}/${vf_pci} ]]; then
                 echo ${vf_pci} > /sys/bus/pci/drivers/${driver}/bind
             fi

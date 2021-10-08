@@ -7,9 +7,15 @@ source ./functions.sh
 
 parse_args $@
 
+# registry is not relevent to the performance operator
+# but let's take care of this as early as possible
+set_registry
+
 oc label --overwrite node ${BAREMETAL_WORKER} node-role.kubernetes.io/worker-cnf=""
 
-###### install performnance operator #####
+mkdir -p ${MANIFEST_DIR}/
+
+##### install performnance operator #####
 # skip if performance operator subscription already exists 
 if ! oc get Subscription performance-addon-operator -n openshift-performance-addon 2>/dev/null; then 
     echo "generating ${MANIFEST_DIR}/sub-perf.yaml ..."
@@ -25,11 +31,12 @@ wait_pod_in_namespace openshift-performance-addon
 echo "Acquiring cpu info from worker node ${BAREMETAL_WORKER} ..."
 all_cpus=$(exec_over_ssh ${BAREMETAL_WORKER} lscpu | awk '/On-line CPU/{print $NF;}')
 export DU_RESERVED_CPUS=$(exec_over_ssh ${BAREMETAL_WORKER} "cat /sys/bus/cpu/devices/cpu0/topology/thread_siblings_list")
-export DU_ISOLATED_CPUS=$(python cpu_cmd.py cpuset-substract ${all_cpus} ${DU_RESERVED_CPUS})
+
+PYTHON=$(get_python_exec)
+export DU_ISOLATED_CPUS=$(${PYTHON} cpu_cmd.py cpuset-substract ${all_cpus} ${DU_RESERVED_CPUS})
 echo "Acquiring cpu info from worker node ${BAREMETAL_WORKER}: done"
 
 echo "generating ${MANIFEST_DIR}/performance_profile.yaml ..."
-mkdir -p ${MANIFEST_DIR}/
 envsubst < templates/performance_profile.yaml.template > ${MANIFEST_DIR}/performance_profile.yaml
 echo "generating ${MANIFEST_DIR}/performance_profile.yaml: done"
 

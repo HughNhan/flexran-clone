@@ -9,6 +9,8 @@ parse_args $@
 
 oc label --overwrite node ${BAREMETAL_WORKER} feature.node.kubernetes.io/network-sriov.capable=true
 
+mkdir -p ${MANIFEST_DIR}/
+
 ###### install sriov operator #####
 # skip if sriov operator subscription already exists 
 if ! oc get Subscription sriov-network-operator-subsription -n openshift-sriov-network-operator 2>/dev/null; then 
@@ -26,7 +28,6 @@ export DU_SRIOV_INTERFACE_PCI=$(exec_over_ssh ${BAREMETAL_WORKER} "ethtool -i ${
 echo "Acquiring SRIOV interface PCI info from worker node ${BAREMETAL_WORKER}: done"
 
 echo "generating ${MANIFEST_DIR}/sriov-nic-policy.yaml ..."
-mkdir -p ${MANIFEST_DIR}/
 envsubst < templates/sriov-nic-policy.yaml.template > ${MANIFEST_DIR}/sriov-nic-policy.yaml
 echo "generating ${MANIFEST_DIR}/sriov-nic-policy.yaml: done"
 

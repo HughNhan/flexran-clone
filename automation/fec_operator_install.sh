@@ -9,6 +9,8 @@ parse_args $@
 
 oc label --overwrite node ${BAREMETAL_WORKER} fpga.intel.com/intel-accelerator-present="" 
 
+mkdir -p ${MANIFEST_DIR}/
+
 # skip if fec operator subscription already exists 
 if ! oc get Subscription sriov-fec-subscription -n vran-acceleration-operators 2>/dev/null; then 
     echo "generating ${MANIFEST_DIR}/sub-fec.yaml ..."
@@ -20,7 +22,6 @@ fi
 wait_named_pod_in_namespace vran-acceleration-operators sriov-fec-controller-manager
 
 echo "generating ${MANIFEST_DIR}/create-vf-acc100.yaml ..."
-mkdir -p ${MANIFEST_DIR}/
 envsubst < templates/create-vf-acc100.yaml.template > ${MANIFEST_DIR}/create-vf-acc100.yaml
 echo "generating ${MANIFEST_DIR}/create-vf-acc100.yaml: done"
 

@@ -5,12 +5,17 @@ set -euo pipefail
 source ./setting.env
 source ./functions.sh
 
+echo "install operators ..."
+./install_operators.sh
+
 echo "setup du ..."
 ./performance_operator_install.sh -n
 # uncomment this after fec operator bug fixed
 #./fec_operator_install.sh -n
 ./ptp_operator_install.sh -n
 ./sriov_operator_install.sh -n
+
+echo "wait mcp to complete ..."
 wait_mcp
 
 # remove below line after fec operator bug fixed

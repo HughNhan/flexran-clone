@@ -10,7 +10,7 @@ echo "clean up ru ..."
 ./ru_sriov.sh clean
 
 echo "clean up du ..."
-./du_pod_cleanup.sh -n
+./du_pod_cleanup.sh
 ./sriov_operator_cleanup.sh -n
 ./ptp_operator_cleanup.sh -n
 ./fec_operator_cleanup.sh -n

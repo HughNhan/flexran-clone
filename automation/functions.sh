@@ -1,3 +1,18 @@
+get_python_exec () {
+    local py_exec
+    if command -v python3 >/dev/null 2>&1; then
+        py_exec=python3
+    elif command -v python2 >/dev/null 2>&1; then
+        py_exec=python2
+    elif command -v python >/dev/null 2>&1; then
+        py_exec=python
+    else
+        echo "command python and python3 not available!"
+        exit 1
+    fi
+    echo ${py_exec}
+}
+
 bind_driver () {
     local driver=$1
     local pci=$2
@@ -10,6 +25,7 @@ bind_driver () {
         if ! echo "${device_id}" > /sys/bus/pci/drivers/${driver}/new_id 2>&1 >/dev/null; then
             true
         fi
+        sleep 1
         if [[ ! -e /sys/bus/pci/drivers/${driver}/${pci} ]]; then
             echo ${pci} > /sys/bus/pci/drivers/${driver}/bind
         fi
@@ -92,10 +108,9 @@ set_registry () {
         echo "${REGISTRY_CERT} not present in current folder, downloading from REGISTRY_SSL_CERT_URL ..."
         curl -L -o ${REGISTRY_CERT} ${REGISTRY_SSL_CERT_URL}
     fi
-    if ! oc get configmap registry-cas -n openshift-config 2>/dev/null; then
-        oc create configmap registry-cas -n openshift-config --from-file=$(echo ${IMAGE_REPO} | sed s/:/../)=${REGISTRY_CERT}
-        oc patch image.config.openshift.io/cluster --patch '{"spec":{"additionalTrustedCA":{"name":"registry-cas"}}}' --type=merge
-    fi
+    oc delete configmap registry-cas -n openshift-config 2>/dev/null || true
+    oc create configmap registry-cas -n openshift-config --from-file=$(echo ${IMAGE_REPO} | sed s/:/../)=${REGISTRY_CERT}
+    oc patch image.config.openshift.io/cluster --patch '{"spec":{"additionalTrustedCA":{"name":"registry-cas"}}}' --type=merge
 }
 
 parse_args() {
