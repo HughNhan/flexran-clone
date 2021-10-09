@@ -5,6 +5,8 @@ set -euo pipefail
 source ./setting.env
 source ./functions.sh
 
+mkdir -p ${MANIFEST_DIR}
+
 OCP_CHANNEL=$(get_ocp_channel)
 
 echo "install performance operator ..."

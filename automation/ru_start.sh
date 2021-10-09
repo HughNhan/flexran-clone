@@ -1,5 +1,4 @@
 #!/bin/sh
-
 set -eu
 
 source ./setting.env
@@ -9,17 +8,14 @@ echo "updating cpu setting in ${ORU_DIR}/usecase_ru.cfg"
 
 cpu_cache_dir=$(mktemp -d)
 
-isolated_cpus=$(cat /sys/devices/system/cpu/nohz_full)
+isolated_cpus=$(cat /proc/cmdline | sed -n -r 's/.* isolcpus=([0-9,\,\-]+) .*/\1/p')
 if [[ -z "${isolated_cpus}" ]]; then
-    isolated_cpus=$(cat /proc/cmdline | sed -n -r 's/.* isolcpus=([0-9,\,\-]+) .*/\1/p')
+    echo "no isolated_cpus on kernel cmdline, use default Cpus_allowed_list"
+    egrep 'Cpus_allowed_list:' /proc/self/status > ${cpu_cache_dir}/procstatus
+else
+    echo "found isolated_cpus on kernel cmdline"
+    echo "Cpus_allowed_list: ${isolated_cpus}" > ${cpu_cache_dir}/procstatus 
 fi
-if [[ -z "${isolated_cpus}" ]]; then
-    echo "please configure isolcpus with RT kernel!"
-    exit 1
-fi
-
-# build a fake procstatus file using above cpuset
-echo "Cpus_allowed_list: ${isolated_cpus}" > ${cpu_cache_dir}/procstatus
 
 PYTHON=$(get_python_exec)
 core=$(${PYTHON} cpu_cmd.py --proc=${cpu_cache_dir}/procstatus --dir ${cpu_cache_dir} allocate-core)
@@ -34,13 +30,12 @@ echo "cpu setting updated"
 
 echo "starting ru"
 
-cd ${ORU_DIR}
-
-ru_cmd="./run_o_ru.sh"
+ru_cmd="cd ${FLEXRAN_DIR}; source ./set_env_var.sh -d; cd ${ORU_DIR}; ./run_o_ru.sh"
 
 tmux kill-session -t ru 2>/dev/null || true
+sleep 1
 tmux new-session -s ru -d "${ru_cmd}" 
-
+sleep 1
 if ! tmux ls | grep ru; then
     echo "failed to start ru"
     exit 1

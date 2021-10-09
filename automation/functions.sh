@@ -2,11 +2,17 @@ get_python_exec () {
     local py_exec
     if command -v python3 >/dev/null 2>&1; then
         py_exec=python3
-    elif command -v python2 >/dev/null 2>&1; then
-        py_exec=python2
-    elif command -v python >/dev/null 2>&1; then
-        py_exec=python
     else
+        for x in $(ls /usr/bin/python3); do
+	    if command -v $x >/dev/null 2>&1; then
+                py_exec=$x
+                break
+            else
+               py_exec=""
+            fi
+        done
+    fi
+    if [[ -z "${py_exec}" ]]; then
         echo "command python and python3 not available!"
         exit 1
     fi
@@ -16,18 +22,15 @@ get_python_exec () {
 bind_driver () {
     local driver=$1
     local pci=$2
-
-    if [[ ! -e /sys/bus/pci/drivers/${driver}/${pci} ]]; then
-        if [[ -e /sys/bus/pci/devices/${pci}/driver ]]; then
-            echo ${pci} > /sys/bus/pci/devices/${pci}/driver/unbind
-        fi
-        device_id=$(lspci -s ${pci} -n | awk '{print $3}' | sed 's/:/ /')
-        if ! echo "${device_id}" > /sys/bus/pci/drivers/${driver}/new_id 2>&1 >/dev/null; then
-            true
-        fi
-        sleep 1
-        if [[ ! -e /sys/bus/pci/drivers/${driver}/${pci} ]]; then
-            echo ${pci} > /sys/bus/pci/drivers/${driver}/bind
+    local original_path=$(realpath /sys/bus/pci/devices/${pci}/driver)
+    local new_path=/sys/bus/pci/drivers/${driver}
+    if [[ ! -e ${new_path}/${pci} ]]; then
+        echo ${pci} > ${original_path}/unbind  || true
+        echo ${driver} > /sys/bus/pci/devices/${pci}/driver_override  || true
+        echo ${pci} > ${new_path}/bind  || true
+        if [[ ! -e ${new_path}/${pci} ]]; then
+            echo "failed to bind ${pci} to ${new_path}"
+            exit 1 
         fi
     fi
 }

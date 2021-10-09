@@ -8,7 +8,7 @@ spec:
   nodeSelector:
     kubernetes.io/hostname: "${BAREMETAL_WORKER}" 
   acceleratorSelector:
-    pciAddress: "${DU_ACC100_PCI}" 
+    pciAddress: "${DU_FEC_PCI}" 
   physicalFunction:
     pfDriver: pci-pf-stub
     vfDriver: vfio-pci

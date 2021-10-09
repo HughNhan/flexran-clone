@@ -28,19 +28,17 @@ bind_driver () {
 
     get_pci_str
 
-    for vf_pci in ${pci_str}; do
-        if [[ ! -e /sys/bus/pci/drivers/${driver}/${vf_pci} ]]; then
-            if [[ -e /sys/bus/pci/devices/${vf_pci}/driver ]]; then
-                echo ${vf_pci} > /sys/bus/pci/devices/${vf_pci}/driver/unbind
-            fi
-            device_id=$(lspci -s ${vf_pci} -n | awk '{print $3}' | sed 's/:/ /')
-            if ! echo "${device_id}" > /sys/bus/pci/drivers/${driver}/new_id 2>&1 >/dev/null; then
-                true
-            fi
-            sleep 1
-            if [[ ! -e /sys/bus/pci/drivers/${driver}/${vf_pci} ]]; then
-                echo ${vf_pci} > /sys/bus/pci/drivers/${driver}/bind
-            fi
+    for pci in ${pci_str}; do
+        original_path=$(realpath /sys/bus/pci/devices/${pci}/driver)
+        new_path=/sys/bus/pci/drivers/${driver}
+        if [[ ! -e ${new_path}/${pci} ]]; then
+             echo ${pci} > ${original_path}/unbind  || true
+             echo ${driver} > /sys/bus/pci/devices/${pci}/driver_override  || true
+             echo ${pci} > ${new_path}/bind  || true
+             if [[ ! -e ${new_path}/${pci} ]]; then
+                 echo "failed to bind ${pci} to ${new_path}"
+                 exit 1
+             fi
         fi
     done
 }
