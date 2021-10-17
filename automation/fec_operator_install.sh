@@ -51,10 +51,10 @@ if ! oc get Subscription sriov-fec-subscription -n vran-acceleration-operators 2
     echo "generating ${MANIFEST_DIR}/sub-fec.yaml: done"
 fi
 
-wait_named_pod_in_namespace vran-acceleration-operators sriov-fec-controller-manager
+wait_named_deployement_in_namespace vran-acceleration-operators sriov-fec-controller-manager
 
 # workaround for fec operator bug
-oc delete SriovFecClusterConfig config -n vran-acceleration-operators 2>/dev/null || true
+# oc delete SriovFecClusterConfig config -n vran-acceleration-operators 2>/dev/null || true
 
 if ! oc get SriovFecClusterConfig config -n vran-acceleration-operators 2>/dev/null; then
     echo "create SriovFecClusterConfig ..."

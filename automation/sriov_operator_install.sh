@@ -55,14 +55,15 @@ fi
 # is VF up?
 if [[ "${WAIT_MCP}" == "true" ]]; then
     count=30
+    printf "waiting for sriov VF come up"
     while ! exec_over_ssh ${BAREMETAL_WORKER} "ip link show ${DU_SRIOV_INTERFACE}" | egrep '^\s+vf\s'; do
         count=$((count -1))
         if ((count == 0)); then
-            echo "SRIOV VF not coming up!"
+            printf "\nSRIOV VF not coming up!\n"
             exit 1
         fi
-        echo "waiting for sriov VF come up ..."
+        printf "."
         sleep 5
     done
-    echo "SRIOV VF: up"
+    printf "\nSRIOV VF: up\n"
 fi

@@ -14,6 +14,7 @@ fi
 echo "clean up du ..."
 ./du_pod_cleanup.sh
 
+pause_mcp
 if [[ "${RUN_XRAN}" == "true" ]]; then
     ./sriov_operator_cleanup.sh -n
     ./ptp_operator_cleanup.sh -n

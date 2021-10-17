@@ -7,22 +7,22 @@ source ./functions.sh
 
 parse_args $@
 
-echo "deleting pod flexran-du ..."
 if oc get pod flexran-du 2>/dev/null; then
     oc delete --wait=false pod flexran-du
 fi
 
+printf "deleting pod flexran-du" 
 if [[ "${WAIT_MCP}" == "true" ]]; then
     count=30
-    while oc get pod flexran-du 2>/dev/null; do
+    while oc get pod flexran-du 1>/dev/null 2>&1; do
        count=$((count -1))
        if ((count == 0)); then
-           echo "pod flexran-du still up!"
+           printf "\nfailed to delete pod flexran-du!\n"
            exit 1
        fi
-       echo "waiting for pod flexran-du delete ..."
+       printf "."
        sleep 5
     done
-    echo "deleting pod flexran-du: done"
+    printf "\npod flexran-du deleted\n"
 fi
 
