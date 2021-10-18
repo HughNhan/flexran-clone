@@ -27,7 +27,7 @@ if ! oc get Subscription sriov-fec-subscription -n vran-acceleration-operators 2
     oc create -f ${MANIFEST_DIR}/sub-fec.yaml
     echo "generating ${MANIFEST_DIR}/sub-fec.yaml: done"
 fi
-wait_named_pod_in_namespace vran-acceleration-operators sriov-fec-controller-manager
+wait_named_deployement_in_namespace vran-acceleration-operators sriov-fec-controller-manager
 echo "install fec operator: done"
 
 echo "install ptp operator ..."

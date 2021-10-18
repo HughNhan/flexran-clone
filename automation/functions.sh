@@ -40,57 +40,90 @@ get_ocp_channel () {
     echo ${channel}
 }
 
+pause_mcp () {
+    oc patch --type=merge --patch='{"spec":{"paused":true}}' machineconfigpool/worker-cnf
+}
+
+resume_mcp () {
+    oc patch --type=merge --patch='{"spec":{"paused":false}}' machineconfigpool/worker-cnf
+}
+
 get_mcp_progress_status () {
     local status=$(oc get mcp worker-cnf -o json | jq -r '.status.conditions[] | select(.type == "Updating") | .status')
     echo ${status}
 }
 
 wait_mcp () {
+    resume_mcp
     sleep 60
     local status=$(get_mcp_progress_status)
-    local count=200
+    local count=300
+    printf "waiting for mcp complete on the baremetal host"
     while [[ $status != "False" ]]; do
         if ((count == 0)); then
-            echo "timeout waiting for mcp complete on the baremetal host!"
+            printf "\ntimeout waiting for mcp complete on the baremetal host!\n"
             exit 1
         fi
         count=$((count-1))
-        echo "waiting for mcp complete on the baremetal host ..."
-        sleep 5
+        printf "."
+        sleep 10
         status=$(get_mcp_progress_status)
     done
+    printf "\nmcp complete on the baremetal host\n"
 }
 
 wait_pod_in_namespace () {
     local namespace=$1
     local count=100
+    printf "waiting for pod in ${namespace}"
     while ! oc get pods -n ${namespace} 2>/dev/null | grep Running; do
         if ((count == 0)); then
-            echo "timeout waiting for pod in ${namespace}!"
+            printf "\ntimeout waiting for pod in ${namespace}!\n" 
             exit 1
         fi
         count=$((count-1))
-        echo "waiting for pod in ${namespace} ..."
+        printf "."
         sleep 5
     done
-    echo "pod in ${namespace}: up"
+    printf "\npod in ${namespace}: up\n"
 }
 
 wait_named_pod_in_namespace () {
     local namespace=$1
     local podpattern=$2
     local count=100
+    printf "waiting for pod ${podpattern} in ${namespace}"
     while ! oc get pods -n ${namespace} 2>/dev/null | grep ${podpattern} | grep Running; do
         if ((count == 0)); then
-            echo "timeout waiting for pod in ${namespace}!"
+            printf "\ntimeout waiting for pod ${podpattern} in ${namespace}!\n"
             exit 1
         fi
         count=$((count-1))
-        echo "waiting for pod pattern ${podpattern} in ${namespace} ..."
+        printf "."
         sleep 5
     done
-    echo "pod ${podpattern} in ${namespace}: up"
+    printf "\npod ${podpattern} in ${namespace}: up\n"
 }
+
+wait_named_deployement_in_namespace () {
+    local namespace=$1
+    local deployname=$2
+    local count=100
+    printf "waiting for deployment ${deployname} in ${namespace}"
+    local status="False"
+    while [[ "${status}" != "True" ]]; do
+        if ((count == 0)); then
+            printf "\ntimeout waiting for deployment ${deployname} in ${namespace}!\n"
+            exit 1
+        fi
+        count=$((count-1))
+        printf "."
+        sleep 5
+        status=$(oc get deploy ${deployname} -n ${namespace} -o json 2>/dev/null | jq -r '.status.conditions[] | select(.type=="Available") | .status' || echo "False")
+    done
+    printf "\ndeployment ${deployname} in ${namespace}: up\n"
+}
+
 
 exec_over_ssh () {
     local nodename=$1
