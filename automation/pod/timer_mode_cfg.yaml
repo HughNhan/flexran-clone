@@ -35,4 +35,5 @@ Threads:
 Dpdk_cfgs:
   1:
     phycfg_timer:
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
       dpdkMemorySize: 4096
