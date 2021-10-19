@@ -94,11 +94,8 @@
 
     <SteamPackets>
         <!-- If this is set to 1, then packets are intercepted from network and sent to L1 in DL and vice versa in UL -->
-<<<<<<< HEAD
-        <StreamPacket>0</StreamPacket>
-=======
         <StreamPacket>0</SteamPackets>
->>>>>>> 20432bcb9102200f1120598c1898867de92f79cf
+        <StreamPacket>0</SteamPackets>
 
         <!-- Number of UEs to stream the packets. Based on this appropriate Dst IP address are setup to appropriate ports -->
         <StreamPacketNumStreams>1</StreamPacketNumStreams>
@@ -183,16 +180,8 @@
         <!-- Destination IP Address to stream the stats (UE 11) -->
         <StreamDstIp11>127.0.0.12</StreamDstIp11>
         <!-- IP Port used to create UDP socket (UE 11) -->
-<<<<<<< HEAD
-        <StreamSrcPort12>2245</StreamSrcPort12>
-        <StreamDstPort11>1245</StreamDstPort11>
-    </SteamPackets>
-
-</TestMacConfig>
-=======
         <StreamSrcPort12>2245</StreamSrcPort11>
         <StreamDstPort11>1245</StreamDstPort11>
     </SteamPackets>
 
 </TestMacConfig>
->>>>>>> 20432bcb9102200f1120598c1898867de92f79cf

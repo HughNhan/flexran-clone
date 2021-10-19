@@ -1,0 +1,61 @@
+apiVersion: v1 
+kind: Pod 
+metadata:
+  name: flexran-du
+  annotations:
+    k8s.v1.cni.cncf.io/networks: >
+      [
+         {
+           "name": "sriov-vlan10",
+           "mac": "00:11:22:33:00:00"
+         },
+         {
+           "name": "sriov-vlan20",
+           "mac": "00:11:22:33:00:10"
+         }
+      ]
+spec:
+  restartPolicy: Never
+  containers:
+  - name: flexran-du 
+    image: "${IMAGE_REPO}/flexran:${FLEXRAN_VERSION}"
+    imagePullPolicy: Always 
+    command:
+      - sleep
+      - infinity 
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: /dev/hugepages
+      name: hugepage
+    - mountPath: /sys
+      name: sys
+    - name: varrun
+      mountPath: /var/run/dpdk
+    - name: dev
+      mountPath: /dev
+    resources:
+      limits:
+        hugepages-1Gi: 16Gi
+        memory: 32Gi
+        cpu: 32
+        intel.com/intel_fec_acc100: '1'
+      requests:
+        hugepages-1Gi: 16Gi
+        memory: 32Gi
+        cpu: 32 
+        intel.com/intel_fec_acc100: '1'
+  volumes:
+  - name: hugepage
+    emptyDir:
+      medium: HugePages
+  - name: sys
+    hostPath:
+      path: /sys
+  - name: varrun
+    emptyDir: {}
+  - name: dev
+    hostPath:
+      path: /dev
+  nodeSelector:
+    node-role.kubernetes.io/worker-cnf: ""

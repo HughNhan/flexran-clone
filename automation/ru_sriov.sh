@@ -1,5 +1,4 @@
 #!/bin/sh
-
 set -euo pipefail
 
 source ./functions.sh
