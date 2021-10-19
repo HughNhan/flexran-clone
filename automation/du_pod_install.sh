@@ -27,7 +27,13 @@ parse_args $@
 
 if ! oc get pod flexran-du 2>/dev/null; then
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml ..."
-    export FLEXRAN_VERSION=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
+    # is there a local flexran install?
+    local_install_version=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
+    export FLEXRAN_VERSION=${FLEXRAN_VERSION:-${local_install_version}}
+    if [[ -z "${FLEXRAN_VERSION}" ]]; then
+        echo "couldn't find env FLEXRAN_VERSION!"
+        exit 1
+    fi
     envsubst < templates/pod_flexran_acc100.yaml.template > ${MANIFEST_DIR}/pod_flexran_du.yaml
     if [[ "${DU_FEC}" == "SW" ]]; then
         # remove intel.com/intel_fec_acc100: line
