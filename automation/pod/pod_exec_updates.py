@@ -4,6 +4,7 @@ Exec flexran test suite in a flexran container
 """
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -286,7 +287,7 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
             test_dir = (testfile.split('/')[-1]).split('.')[0]
             directory_exits = os.path.isdir(test_dir)
             if not directory_exits:
-                os.makedirs(RESULTS_DIR)
+                os.makedirs(test_dir)
                 print('Created results/' + test_dir + ' directory')
             else:
                 print('results/' + test_dir + ' directory exits')
