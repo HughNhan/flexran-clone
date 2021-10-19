@@ -17,6 +17,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 
 DEBUG = False
+RESULTS_DIR = 'results'
 
 def main():
     # Get the command line arguments from the user.
@@ -49,11 +50,8 @@ def main():
         type=str, required=False,
         help='the directory(ies) to be copied to the pod (requires rsync or ' +
              'tar on pod)')
-<<<<<<< HEAD
     parser.add_argument('-r', '--restart', default=False, action='store_true',
         help='a flag which will cause the pod to restart (useful for between each test)')
-=======
->>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
 
     args = parser.parse_args()
     pod_name = args.pod
@@ -65,10 +63,7 @@ def main():
     no_sibling = args.no_sibling
     files = args.file
     directories = args.dir
-<<<<<<< HEAD
     restart = args.restart
-=======
->>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
 
     config.load_kube_config()
     try:
@@ -79,13 +74,9 @@ def main():
     Configuration.set_default(c)
     core_v1 = core_v1_api.CoreV1Api()
 
-<<<<<<< HEAD
     #check_and_start_pod(pod_name, core_v1, restart)
     check_pod(pod_name, core_v1)
 
-=======
-    check_and_start_pod(pod_name, core_v1)
->>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
     if files:
         copy_files(pod_name, destination, files)
     if directories:
@@ -112,16 +103,20 @@ def copy_directories(pod_name, destination, directories):
         print(directory)
     return
 
-<<<<<<< HEAD
 def check_pod(name, api_instance):
+    resp = None
+    try:
+        resp = api_instance.read_namespaced_pod(name=name,
+                                                namespace='default')
+    except ApiException as e:
+        if e.status != 404:
+            print("Unknown error: %s" % e)
+            exit(1)
     if not resp or resp.status.phase != 'Running':
         print("Pod %s does not exist. Exiting..." % name)
         exit(1)
 
 def check_and_start_pod(name, api_instance, restart):
-=======
-def check_and_start_pod(name, api_instance):
->>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
     resp = None
     try:
         resp = api_instance.read_namespaced_pod(name=name,
@@ -131,13 +126,8 @@ def check_and_start_pod(name, api_instance):
             print("Unknown error: %s" % e)
             exit(1)
     #print(resp.status.phase)
-<<<<<<< HEAD
     if (resp and resp.status.phase != 'Running') or restart:
         print("Pod %s exists but but will be restarted. Deleting it..." % name)
-=======
-    if resp and resp.status.phase != 'Running':
-        print("Pod %s exists but is not running. Deleting it..." % name)
->>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
         resp = api_instance.delete_namespaced_pod(name=name,
                                                 namespace='default')
         while True:
@@ -175,7 +165,7 @@ def exec_updates(name, api_instance, destination, testmac,
                   stdout=True, tty=True,
                   _preload_content=False)
 
-    update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg
+    update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg.split('/')[-1]
 
     if no_sibling:
         update_command = update_command + ' --no_sibling'
@@ -285,18 +275,35 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
         l1_output = l1_output + resp.read_stdout()
         result = re.search(r"All Tests Completed.*\n", testmac_output)
         if result:
+            print('Checking directory status...')
+            directory_exits = os.path.isdir(RESULTS_DIR)
+            if not directory_exits:
+                os.makedirs(RESULTS_DIR)
+                print('Created results directory')
+            else:
+                print('Results directory exits')
+
+            test_dir = (testfile.split('/')[-1]).split('.')[0]
+            directory_exits = os.path.isdir(test_dir)
+            if not directory_exits:
+                os.makedirs(RESULTS_DIR)
+                print('Created results/' + test_dir + ' directory')
+            else:
+                print('results/' + test_dir + ' directory exits')
+
             print(result.group())
-            print("Copying stat file (l1_mlog_stats.txt) to current directory...")
+            print("Copying stat file (l1_mlog_stats.txt) to results directory...")
+
             copy_output = subprocess.check_output(
-                    ['oc', 'cp', pod_name + ':' + l1 + '/l1_mlog_stats.txt', "./l1_mlog_stats.txt"])
+                    ['oc', 'cp', pod_name + ':' + l1 + '/l1_mlog_stats.txt', "./" + RESULTS_DIR + '/' + test_dir + "/l1_mlog_stats.txt"])
             #print(output)
-            print("Writing l1 output (l1.txt) to current directory...")
-            l1_out = open('l1.txt', 'w')
+            print("Writing l1 output (l1.txt) to results directory...")
+            l1_out = open('./' + RESULTS_DIR + '/' + test_dir + '/l1.txt', 'w')
             out = l1_out.write(l1_output)
             l1_out.close()
 
-            print("Writing testfile output (testmac.txt) to current directory...")
-            test_output = open('testmac.txt', 'w')
+            print("Writing testfile output (testmac.txt) to results directory...")
+            test_output = open('./' + RESULTS_DIR + '/' + test_dir + '/testmac.txt', 'w')
             out = test_output.write(testmac_output)
             test_output.close()
 
