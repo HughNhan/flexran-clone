@@ -49,8 +49,11 @@ def main():
         type=str, required=False,
         help='the directory(ies) to be copied to the pod (requires rsync or ' +
              'tar on pod)')
+<<<<<<< HEAD
     parser.add_argument('-r', '--restart', default=False, action='store_true',
         help='a flag which will cause the pod to restart (useful for between each test)')
+=======
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
 
     args = parser.parse_args()
     pod_name = args.pod
@@ -62,7 +65,10 @@ def main():
     no_sibling = args.no_sibling
     files = args.file
     directories = args.dir
+<<<<<<< HEAD
     restart = args.restart
+=======
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
 
     config.load_kube_config()
     try:
@@ -73,9 +79,13 @@ def main():
     Configuration.set_default(c)
     core_v1 = core_v1_api.CoreV1Api()
 
+<<<<<<< HEAD
     #check_and_start_pod(pod_name, core_v1, restart)
     check_pod(pod_name, core_v1)
 
+=======
+    check_and_start_pod(pod_name, core_v1)
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
     if files:
         copy_files(pod_name, destination, files)
     if directories:
@@ -102,12 +112,16 @@ def copy_directories(pod_name, destination, directories):
         print(directory)
     return
 
+<<<<<<< HEAD
 def check_pod(name, api_instance):
     if not resp or resp.status.phase != 'Running':
         print("Pod %s does not exist. Exiting..." % name)
         exit(1)
 
 def check_and_start_pod(name, api_instance, restart):
+=======
+def check_and_start_pod(name, api_instance):
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
     resp = None
     try:
         resp = api_instance.read_namespaced_pod(name=name,
@@ -117,8 +131,13 @@ def check_and_start_pod(name, api_instance, restart):
             print("Unknown error: %s" % e)
             exit(1)
     #print(resp.status.phase)
+<<<<<<< HEAD
     if (resp and resp.status.phase != 'Running') or restart:
         print("Pod %s exists but but will be restarted. Deleting it..." % name)
+=======
+    if resp and resp.status.phase != 'Running':
+        print("Pod %s exists but is not running. Deleting it..." % name)
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
         resp = api_instance.delete_namespaced_pod(name=name,
                                                 namespace='default')
         while True:

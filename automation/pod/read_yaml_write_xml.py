@@ -213,7 +213,10 @@ class CfgData:
             a_dpdk_cfg = CfgDpdk()
             a_dpdk_cfg.cfg_file_name = cfg_file
         else:
+<<<<<<< HEAD
             existing = True
+=======
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
             a_dpdk_cfg = cls.dict_list_cfg_dpdks[cfg_file][0]
 
         #print("#####load_dpdk_cfg: ", cfg_field, "val: ", cfg_val)
@@ -228,7 +231,10 @@ class CfgData:
                 sys.exit("The evn varible is not set in xran test mode ")
         elif cfg_field == "dpdkEnvModeStr":
             env_value = get_env_variable(cfg_val)
+<<<<<<< HEAD
             #print("env str: ", cfg_val)
+=======
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
             #print("env value: ", env_value)
             if(env_value is None):
                 a_dpdk_cfg.base_band_fec_mode_val = 0
@@ -241,7 +247,11 @@ class CfgData:
             a_dpdk_cfg.mem_size_str = cfg_field
             a_dpdk_cfg.mem_size_val = cfg_val
 
+<<<<<<< HEAD
             if a_dpdk_cfg.env_acc_mode_str_set == False:
+=======
+            if a_dpdk_cfg.env_acc_mode_str_set is False:
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
                 #print("evn str is not set")
                 env_value = get_env_variable(CfgDpdk.env_acc_mode_str)
                 if(env_value is None):
@@ -254,7 +264,11 @@ class CfgData:
 
         if cfg_file not in cls.dict_list_cfg_dpdks.keys():
             cls.dict_list_cfg_dpdks[cfg_file] = [a_dpdk_cfg]
+<<<<<<< HEAD
         elif existing == False:
+=======
+        elif existing is False:
+>>>>>>> 416f2b42b056f85394c22ba541c8fc6a18ed7e91
             cls.dict_list_cfg_dpdks[cfg_file].append(a_dpdk_cfg)
         #print (cls.dict_list_cfg_dpdks)
 
