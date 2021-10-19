@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-from io import TextIOWrapper
-from re import I
 import sys, yaml, os
 from typing import Any, Dict, List, Optional
 import lxml.etree as LET
@@ -46,14 +44,14 @@ class CfgDpdk:
 
     test_mode_xran: bool = field(init=True, default=False)
 
-    #timer mode cfg fields
-    #PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100=0000:b6:01.4
-    env_acc_mode_str: str = "PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100"
 
     cfg_file_name: str = field(init=False, default=None)
     mem_size_str: str = field(init=False, default=None) 
     mem_size_val: int = field(init=False, default=None)
-    env_acc_mode_str_set: bool = field(init=False, default=False)
+
+    
+    #PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100=0000:b6:01.4
+    #PCIDEVICE_INTEL_COM_INTEL_FEC_5G=0000:66:00.1
 
     base_band_fec_mode_str: str = "dpdkBasebandFecMode" 
     base_band_fec_mode_val: int = field(init=False, default=None)
@@ -196,7 +194,6 @@ class CfgData:
         yaml_dpdks = yaml_data["Dpdk_cfgs"]
         dpdks = yaml_data["Dpdk_cfgs"]
 
-        #print(yaml_threads)
         for num in dpdks:
             #print (num, ": ", yaml_threads[num])
             cfg_objs = dpdks[num]
@@ -236,22 +233,10 @@ class CfgData:
             else:
                 a_dpdk_cfg.base_band_fec_mode_val = 1
                 a_dpdk_cfg.base_band_device_val = env_value
-                a_dpdk_cfg.env_acc_mode_str_set = True
                 #print("passed in env value ", env_value)
         else:
             a_dpdk_cfg.mem_size_str = cfg_field
             a_dpdk_cfg.mem_size_val = cfg_val
-
-            if a_dpdk_cfg.env_acc_mode_str_set == False:
-                #print("evn str is not set")
-                env_value = get_env_variable(CfgDpdk.env_acc_mode_str)
-                if(env_value is None):
-                    a_dpdk_cfg.base_band_fec_mode_val = 0
-                else:
-                    a_dpdk_cfg.base_band_fec_mode_val = 1
-                    a_dpdk_cfg.base_band_device_val = env_value
-                    #print("env value ", env_value)
-
 
         if cfg_file not in cls.dict_list_cfg_dpdks.keys():
             cls.dict_list_cfg_dpdks[cfg_file] = [a_dpdk_cfg] 
