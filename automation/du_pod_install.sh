@@ -48,13 +48,13 @@ if ! oc get pod flexran-du 2>/dev/null; then
         exit 1
     fi 
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml: done"
-fi
 
-if [[ "${timer_mode:-true}" == "true" ]]; then
-    yq -i -y 'del(.metadata.annotations)' ${MANIFEST_DIR}/pod_flexran_du.yaml
-fi
+    if [[ "${timer_mode:-true}" == "true" ]]; then
+        yq -i -y 'del(.metadata.annotations)' ${MANIFEST_DIR}/pod_flexran_du.yaml
+    fi
 
-oc create -f ${MANIFEST_DIR}/pod_flexran_du.yaml
+    oc create -f ${MANIFEST_DIR}/pod_flexran_du.yaml
+fi
 
 wait_named_pod_in_namespace default flexran-du
 
