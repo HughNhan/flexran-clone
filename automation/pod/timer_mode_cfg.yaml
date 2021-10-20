@@ -36,3 +36,6 @@ Dpdk_cfgs:
     phycfg_timer:
       dpdkMemorySize: 4096
       dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
+
+Tests:
+  - clxsp_mu0_10mhz_4x4_hton.cfg

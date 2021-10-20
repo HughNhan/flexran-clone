@@ -36,12 +36,12 @@ def main():
     parser.add_argument('-l1', '--l1_dir',
         metavar='l1_directory', type=str, required=True,
         help='the l1 directory on the pod')
-    parser.add_argument('-t', '--testfile', metavar='testfile', type=str,
-        required=True,
-        help='the path to the testfile to be updated')
+    #parser.add_argument('-t', '--testfile', metavar='testfile', type=str,
+    #    required=True,
+    #    help='the path to the testfile to be updated')
     parser.add_argument('-c', '--cfg', metavar='cfg', type=str,
         required=True,
-        help='the configuration file to update threads')
+        help='the configuration file to update threads, define paths, and get tests')
     parser.add_argument('-n', '--no_sibling', default=False,
         action='store_true',
         help='optional no_sibling flag')
@@ -59,7 +59,7 @@ def main():
     destination = args.dest
     testmac = args.testmac_dir
     l1 = args.l1_dir
-    testfile = args.testfile
+    #testfile = args.testfile
     cfg = args.cfg
     no_sibling = args.no_sibling
     files = args.file
@@ -85,7 +85,39 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
                  no_sibling)
 
-    exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
+    test_list = get_tests_from_yaml(cfg)
+    architecture_dir = get_architecture_from_yaml(cfg)
+    for testfile in test_list:
+        testfile = testmac + '/' + architecture_dir + '/' + testfile
+        exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
+
+def get_tests_from_yaml(cfg):
+    try:
+        f = open(cfg, 'r')
+        config_yaml = yaml.safe_load(f)
+        f.close()
+    except:
+        sys.exit("Can't open or parse %s" %(cfg))
+
+    if 'Tests' in config_yaml:
+        return config_yaml['Tests']
+    else:
+        print('No tests in config...')
+        return []
+
+def get_architecture_from_yaml(cfg):
+    try:
+        f = open(cfg, 'r')
+        config_yaml = yaml.safe_load(f)
+        f.close()
+    except:
+        sys.exit("Can't open or parse %s" %(cfg))
+
+    if 'Arch_dir' in config_yaml:
+        return config_yaml['Arch_dir']
+    else:
+        print('No architecture directory in config...')
+        exit(1)
 
 def copy_files(pod_name, destination, files):
     print('\nCopying files to pod \'' + pod_name + '\':')
