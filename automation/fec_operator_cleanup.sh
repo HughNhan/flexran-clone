@@ -13,7 +13,7 @@ if [[ "${DU_FEC}" == "SW" ]]; then
 fi
 
 echo "Removing FEC VF ..."
-oc delete -f ${MANIFEST_DIR}/create-fec-vf.yaml
+[ -e ${MANIFEST_DIR}/create-fec-vf.yaml ] && oc delete -f ${MANIFEST_DIR}/create-fec-vf.yaml
 echo "Removing FEC VF: done"
 
 if [[ "${WAIT_MCP}" == "true" ]]; then
