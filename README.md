@@ -1,10 +1,16 @@
-# Run FlexRAN test suites in OpenShift 
+# Run FlexRAN test suites in OpenShift
 
 ## Compile flexran
 
-The following steps prove to work on fresh installed RHEL8.2
+The following steps prove to work on fresh installed RHEL8.2 and FlexRAN 21.03
 
 ```
+# Assume all source files are pre-saved under /opt/src/flexran
+DPDK_PATCH=/opt/src/flexran/dpdk_21.03.patch
+ICC_TAR_BALL=/opt/src/flexran/system_studio_2019_update_5_ultimate_edition.tar.gz
+ICC_LICENSE=/opt/src/flexran/flexran_license.lic
+FLEXRAN_TAR_BALL=/opt/src/flexran/FlexRAN-21.03.tar.gz
+
 subscription-manager register
 subscription-manager attach --auto
 subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
@@ -12,17 +18,15 @@ yum groupinstall -y 'Development Tools'
 yum install -y git patch tar zip unzip python3 cmake3 libstdc++-static elfutils-libelf-devel zlib-devel numactl-devel libhugetlbfs-devel
 pip3 install meson && pip3 install ninja
 mkdir -p /opt && cd /opt && git clone git://dpdk.org/dpdk-stable dpdk
-cd /opt/dpdk && git checkout 20.11 && patch -p1 <  dpdk_20.11_20.11.5.patch
-cd /opt && tar zxvf system_studio_2019_update_5_ultimate_edition.tar.gz
-cd /opt/system_studio_2019_update_5_ultimate_edition && sed -i -r -e 's/^ACCEPT_EULA=.*/ACCEPT_EULA=accept/' -e 's/^ACTIVATION_TYPE=.*/ACTIVATION_TYPE=license_file/' -e 's%^#?ACTIVATION_LICENSE_FILE=.*%ACTIVATION_LICENSE_FILE=/opt/flexran_license.lic%' silent.cfg
+cd /opt/dpdk && git checkout 20.11 && patch -p1 < ${DPDK_PATCH}
+cd /opt && tar zxvf ${ICC_TAR_BALL}
+cd /opt/system_studio_2019_update_5_ultimate_edition && sed -i -r -e 's/^ACCEPT_EULA=.*/ACCEPT_EULA=accept/' -e 's/^ACTIVATION_TYPE=.*/ACTIVATION_TYPE=license_file/' -e "s%^#?ACTIVATION_LICENSE_FILE=.*%ACTIVATION_LICENSE_FILE=${ICC_LICENSE}%" silent.cfg
 cd /opt/system_studio_2019_update_5_ultimate_edition && ./install.sh -s silent.cfg
-cd /opt && mkdir -p flexran && tar zxvf FlexRAN-20.11.tar.gz -C flexran/
-cd /opt/flexran && ./extract.sh 
-cd /opt && unzip -d flexran FlexRAN-20.11.6_update.zip
-cd /opt/flexran && patch -p1 < FlexRAN-20.11.6_update.patch
+cd /opt && mkdir -p flexran && tar zxvf ${FLEXRAN_TAR_BALL} -C flexran/
+cd /opt/flexran && ./extract.sh
 cd /opt/flexran && source ./set_env_var.sh -d
 sed -r -i -e 's%^#include <linux/bootmem.h>%//#include <linux/bootmem.h>%' /opt/flexran/libs/cpa/sub6/rec/drv/src/nr_dev.c
-cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk 
+cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk
 cd /opt/dpdk && meson build
 cd /opt/dpdk/build && meson configure -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
 export MESON_BUILD=1
@@ -37,7 +41,7 @@ sh flexran-container.sh
 
 The script will build a container image "flexran".
 
- 
+
 ## Verify flexran container image using podman
 
 ```podman run --name flexran -d --privileged --cpuset-cpus 4,6,8,10,12,14,16,18 --mount 'type=bind,src=/sys,dst=/sys' --mount 'type=bind,src=/dev,destination=/dev' flexran sleep infinity```
@@ -47,7 +51,7 @@ From terminal 1, run ```podman exec -it flexran sh```. To run test suites in tim
 * DPDK/dpdkBasebandDevice
 * Threads/{systemThread,timerThread}
 
-There are comments in the xml file to explain the purpose of these fields.  
+There are comments in the xml file to explain the purpose of these fields.
 
 From terminal 2, run ```podman exec -it flexran sh```. The entry point for testmac is /opt/flexran/bin/nr5g/gnb/testmac/l2.sh. This script will drop into the testmac console. Before running this script, one must update the settings in testmac_cfg.xml. The following xml fields need to be updated,
 * Threads/{wlsRxThread,systemThread,runThread}
@@ -76,7 +80,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    openshift.io/run-level: "1" 
+    openshift.io/run-level: "1"
   name: openshift-performance-addon
 ---
 apiVersion: operators.coreos.com/v1
@@ -111,7 +115,7 @@ metadata:
   labels:
     machineconfiguration.openshift.io/role: worker-cnf
 spec:
-  paused: false 
+  paused: false
   machineConfigSelector:
     matchExpressions:
       - key: machineconfiguration.openshift.io/role
@@ -126,7 +130,7 @@ cat <<EOF  | oc create -f -
 apiVersion: performance.openshift.io/v1alpha1
 kind: PerformanceProfile
 metadata:
-  name: cnv-sriov-profile 
+  name: cnv-sriov-profile
 spec:
   cpu:
     isolated: "4-39"
@@ -135,15 +139,15 @@ spec:
     defaultHugepagesSize: "1G"
     pages:
     - size: "1G"
-      count: 16 
+      count: 16
   realTimeKernel:
-    enabled: true 
+    enabled: true
   nodeSelector:
-    node-role.kubernetes.io/worker-cnf: "" 
+    node-role.kubernetes.io/worker-cnf: ""
 EOF
 
 status=$(oc get mcp | awk '/worker-cnf/{print $4}')
-while [[ $status != "False" ]]; do 
+while [[ $status != "False" ]]; do
     echo "waiting for mcp complete"
     sleep 5
     status=$(oc get mcp | awk '/worker-cnf/{print $4}')
@@ -169,7 +173,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: n3000-subscription
-  namespace: vran-acceleration-operators 
+  namespace: vran-acceleration-operators
 spec:
   channel: stable
   name: n3000
@@ -259,9 +263,9 @@ metadata:
   namespace: vran-acceleration-operators
 spec:
   nodes:
-    - nodeName: worker1 
+    - nodeName: worker1
       physicalFunctions:
-        - pciAddress: 0000:66:00.0 
+        - pciAddress: 0000:66:00.0
           pfDriver: pci-pf-stub
           vfDriver: vfio-pci
           vfAmount: 2
@@ -276,8 +280,8 @@ spec:
                 bandwidth: 3
                 loadBalance: 128
                 queues:
-                  vf0: 16 
-                  vf1: 16 
+                  vf0: 16
+                  vf1: 16
                   vf2: 0
                   vf3: 0
                   vf4: 0
@@ -288,8 +292,8 @@ spec:
                 bandwidth: 3
                 loadBalance: 128
                 queues:
-                  vf0: 16 
-                  vf1: 16 
+                  vf0: 16
+                  vf1: 16
                   vf2: 0
                   vf3: 0
                   vf4: 0
@@ -305,7 +309,7 @@ while oc get sriovfecnodeconfigs -n vran-acceleration-operators | grep Succeeded
 done
 
 # make sure intel.com/intel_fec_5g show up
-oc get node worker1 -o json | jq -r '.status.capacity' 
+oc get node worker1 -o json | jq -r '.status.capacity'
 ```
 
 ## Create FEC VFs on ACC100
@@ -355,26 +359,26 @@ while oc get sriovfecnodeconfigs -n vran-acceleration-operators | grep Succeeded
 done
 
 # make sure intel.com/intel_fec_acc100 show up
-oc get node worker1 -o json | jq -r '.status.capacity' 
+oc get node worker1 -o json | jq -r '.status.capacity'
 ```
 
 ## Run flexran timer test suite from Openshift with software FEC
 
 ```
 cat <<EOF  | oc create -f -
-apiVersion: v1 
-kind: Pod 
+apiVersion: v1
+kind: Pod
 metadata:
   name: flexran
 spec:
   restartPolicy: Never
   containers:
-  - name: flexran 
-    image: 192.168.222.1:5000/flexran 
-    imagePullPolicy: Always 
+  - name: flexran
+    image: 192.168.222.1:5000/flexran
+    imagePullPolicy: Always
     command:
       - sleep
-      - "36000" 
+      - "36000"
     securityContext:
       privileged: true
     volumeMounts:
@@ -408,7 +412,7 @@ From terminal 1, run ```oc exec -it flexran sh```. To run test suites in timer m
 * DPDK/dpdkBasebandDevice
 * Threads/{systemThread,timerThread}
 
-There are comments in the xml file to explain the purpose of these fields.  
+There are comments in the xml file to explain the purpose of these fields.
 
 From terminal 2, run ```oc exec -it flexran sh```. The entry point for testmac is /opt/flexran/bin/nr5g/gnb/testmac/l2.sh. This script will drop into the testmac console. Before running this script, one must update the settings in testmac_cfg.xml. The following xml fields need to be updated,
 * Threads/{wlsRxThread,systemThread,runThread}
@@ -422,19 +426,19 @@ To start the actual test, in the testmac console, `runall 0`
 
 ```
 cat <<EOF  | oc create -f -
-apiVersion: v1 
-kind: Pod 
+apiVersion: v1
+kind: Pod
 metadata:
   name: flexran
 spec:
   restartPolicy: Never
   containers:
-  - name: flexran 
-    image: 10.16.231.128:5000/flexran 
-    imagePullPolicy: Always 
+  - name: flexran
+    image: 10.16.231.128:5000/flexran
+    imagePullPolicy: Always
     command:
       - sleep
-      - "36000" 
+      - "36000"
     securityContext:
       privileged: true
     volumeMounts:
@@ -448,7 +452,7 @@ spec:
       limits:
         hugepages-1Gi: 16Gi
         memory: 16Gi
-        cpu: 8 
+        cpu: 8
         intel.com/intel_fec_5g: '1'
       requests:
         hugepages-1Gi: 16Gi
@@ -471,7 +475,7 @@ EOF
 
 To use acc100, replace intel_fec_5g with intel_fec_acc100 in the above yaml.
 
-Once the pod is started, modify the config xml files and run l1.sh and l2.sh as illustrated earlier. 
+Once the pod is started, modify the config xml files and run l1.sh and l2.sh as illustrated earlier.
 
 
 ## Run xran test suite from Openshift with FEC hardware acceleration
@@ -620,7 +624,7 @@ metadata:
 spec:
   channel: "${OCP_CHANNEL_NUM}"
   name: sriov-network-operator
-  source: redhat-operators 
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
 EOF
 
@@ -646,7 +650,7 @@ spec:
     vendor: "8086"
     pfNames:
     - ens1f0
-    - ens7f0 
+    - ens7f0
   nodeSelector:
     feature.node.kubernetes.io/network-sriov.capable: "true"
   numVfs: 8
@@ -661,7 +665,7 @@ metadata:
   name: sriov-vlan10
   namespace: openshift-sriov-network-operator
 spec:
-  ipam: "" 
+  ipam: ""
   resourceName: intelnics0
   vlan: 10
   networkNamespace: default
@@ -672,7 +676,7 @@ metadata:
   name: sriov-vlan20
   namespace: openshift-sriov-network-operator
 spec:
-  ipam: "" 
+  ipam: ""
   resourceName: intelnics0
   vlan: 20
   networkNamespace: default
@@ -683,8 +687,8 @@ EOF
 
 ```
 cat <<EOF  | oc create -f -
-apiVersion: v1 
-kind: Pod 
+apiVersion: v1
+kind: Pod
 metadata:
   name: flexran-du
   annotations:
@@ -692,12 +696,12 @@ metadata:
 spec:
   restartPolicy: Never
   containers:
-  - name: flexran-du 
-    image: 10.16.231.128:5000/flexran 
-    imagePullPolicy: Always 
+  - name: flexran-du
+    image: 10.16.231.128:5000/flexran
+    imagePullPolicy: Always
     command:
       - sleep
-      - "36000" 
+      - "36000"
     securityContext:
       privileged: true
     volumeMounts:
@@ -711,7 +715,7 @@ spec:
       limits:
         hugepages-1Gi: 16Gi
         memory: 16Gi
-        cpu: 8 
+        cpu: 8
         intel.com/intel_fec_acc100: '1'
       requests:
         hugepages-1Gi: 16Gi
@@ -732,20 +736,20 @@ spec:
 EOF
 ```
 
-### Simulate RU 
+### Simulate RU
 
 On the RU server (the server on the right in the topology diagram), create 2 VFs,
 ```
 echo 2 > /sys/class/net/${RU_ETH}/device/sriov_numvfs
 ip link set dev ${RU_ETH} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
-ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off 
+ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off
 ```
 
 Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
 
 In run_o_ru.sh, update --vf_addr_o_xu_a with the pci address of the two VF created.
 
-In usecase_ru.cfg, 
+In usecase_ru.cfg,
 * ioCore
 * ioWorker
 * oXuRem0Mac0, oXuRem0Mac1: DU's VF mac address
@@ -784,7 +788,7 @@ copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_m
 * phystart: 4 0 100007
 * setcore
 
-After these change are made, start the l1app by 
+After these change are made, start the l1app by
 ```
 source /opt/flexran/auto/env.src
 /opt/flexran/auto/driver.sh vfio  # this will make sure the driver is vfio bound
@@ -792,12 +796,12 @@ cd /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/
 ./l1.sh -oru
 ```
 
-on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by 
+on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by
 ```
 cd /opt/flexran/bin/nr5g/gnb/testmac
 source /opt/flexran/auto/env.src
 ./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg
-``` 
+```
 
 This will automatically start the test suite.
 
@@ -807,14 +811,14 @@ On the RU server, create 2 VFs,
 ```
 echo 2 > /sys/class/net/${RU_ETH}/device/sriov_numvfs
 ip link set dev ${RU_ETH} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
-ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off 
+ip link set dev ${RU_ETH} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off
 ```
 
 Go to directory /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/oru and make following changes.
 
 In run_o_ru.sh, update --vf_addr_o_xu_a with the pci address of the two VF created.
 
-In usecase_ru.cfg, 
+In usecase_ru.cfg,
 * ioCore
 * ioWorker
 * oXuRem0Mac0, oXuRem0Mac1: DU's VF mac address
@@ -853,7 +857,7 @@ copy /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/testmac_clxsp_m
 * phystart: 4 0 100007
 * setcore
 
-After these change are made, start the l1app by 
+After these change are made, start the l1app by
 ```
 source /opt/flexran/auto/env.src
 /opt/flexran/auto/driver.sh vfio  # this will make sure the driver is vfio bound
@@ -861,11 +865,11 @@ cd /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_20mhz_4x4/gnb/
 ./l1.sh -oru
 ```
 
-on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by 
+on terminal 2 run ```oc exec -it flexran sh```. Start the TESTMAC by
 ```
 cd /opt/flexran/bin/nr5g/gnb/testmac
 source /opt/flexran/auto/env.src
 ./l2.sh --testfile=testmac_clxsp_mu0_20mhz_hton_oru.cfg
-``` 
+```
 
 This will automatically start the test suite.
