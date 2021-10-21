@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import subprocess
 import sys, yaml, os
 from typing import Any, Dict, List, Optional
 import lxml.etree as LET
@@ -348,6 +348,8 @@ class CfgData:
         for num in yaml_cfg_file_paths:
             for file_name in yaml_cfg_file_paths[num]:
                 cls.dict_cfgfile_paths[file_name + ".xml"] = yaml_cfg_file_paths[num][file_name] 
+                #print(yaml_cfg_file_paths[num][file_name]+"/"+file_name+".xml")
+                os.system('sed -i -r \'s/^(\\s+)<(\\w+)>(.+)<.+/\\1<\\2>\\3<\\/\\2>/\''+ " " +yaml_cfg_file_paths[num][file_name]+file_name+".xml")
         #print(cls.dict_cfgfile_paths)           
  
     @classmethod

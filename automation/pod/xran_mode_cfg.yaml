@@ -3,6 +3,8 @@ Cfg_file_paths:
     phycfg_xran: cfg_examples/
   2: 
     xrancfg_sub6_oru: cfg_examples/
+  3: 
+    testmac_cfg: cfg_examples/
     
 
 Threads:
@@ -14,6 +16,13 @@ Threads:
         pri: 0
       FrontHaulCpuInfo:
         pri: 0
+    testmac_cfg:
+      systemThread:
+        pri: 0
+      runThread:
+        pri: 89
+      urllcThread:
+        pri: 90
   2:
     phycfg_xran:
       timerThread:
@@ -28,6 +37,10 @@ Threads:
       xRANWorker:
         pri: 95
         format: core_mask
+  4:
+    testmac_cfg:
+      wlsRxThread:
+        pri: 90
 
 
 
