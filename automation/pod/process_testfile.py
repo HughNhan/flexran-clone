@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 
 from cpu import CpuResource
+import sys
+
+PHYSTART_QUICK_DEFAULT = 'phystart 4 0 100007'
 
 class ProcessTestfile:
 
@@ -12,7 +15,7 @@ class ProcessTestfile:
     #   https://stackoverflow.com/questions/38935169/convert-elements-of-a-list-into-binary
     #   https://stackoverflow.com/questions/21409461/binary-list-from-indices-of-ascending-integer-list
     @classmethod
-    def update_testfile(cls, rsc, testfile):
+    def update_testfile(cls, rsc, testfile, phystart_quick):
         print('Updating testfile...')
         try:
             f = open(testfile, 'r')
@@ -30,6 +33,9 @@ class ProcessTestfile:
                 # Create the hex representation and replace the old setcore
                 new_setcore_hex = ' ' + rsc.get_free_siblings_mask(num_cpus) + '\n'
                 cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
+            elif phystart_quick and 'phystart' in line:
+                phystart_index = line.index('phystart')
+                cfg[line_index] = line.replace(line[phystart_index:], PHYSTART_QUICK_DEFAULT)
 
             line_index += 1
 

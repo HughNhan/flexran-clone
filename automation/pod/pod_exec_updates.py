@@ -4,6 +4,7 @@ Exec flexran test suite in a flexran container
 """
 
 import argparse
+import datetime
 import os
 import re
 import subprocess
@@ -36,9 +37,6 @@ def main():
     parser.add_argument('-l1', '--l1_dir',
         metavar='l1_directory', type=str, required=True,
         help='the l1 directory on the pod')
-    #parser.add_argument('-t', '--testfile', metavar='testfile', type=str,
-    #    required=True,
-    #    help='the path to the testfile to be updated')
     parser.add_argument('-c', '--cfg', metavar='cfg', type=str,
         required=True,
         help='the configuration file to update threads, define paths, and get tests')
@@ -53,6 +51,8 @@ def main():
              'tar on pod)')
     parser.add_argument('-r', '--restart', default=False, action='store_true',
         help='a flag which will cause the pod to restart (useful for between each test)')
+    parser.add_argument('-x', '--xran', default=False, action='store_true',
+        help='a flag indicating xran test mode')
 
     args = parser.parse_args()
     pod_name = args.pod
@@ -65,6 +65,7 @@ def main():
     files = args.file
     directories = args.dir
     restart = args.restart
+    xran = args.xran
 
     config.load_kube_config()
     try:
@@ -82,14 +83,22 @@ def main():
         copy_files(pod_name, destination, files)
     if directories:
         copy_directories(pod_name, destination, directories)
-    exec_updates(pod_name, core_v1, destination, testmac, l1, testfile, cfg,
-                 no_sibling)
 
     test_list = get_tests_from_yaml(cfg)
-    architecture_dir = get_architecture_from_yaml(cfg)
+
+    architecture_dir = get_architecture_from_yaml(cfg, xran)
+
+    exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
+                 no_sibling, architecture_dir, xran)
+
     for testfile in test_list:
-        testfile = testmac + '/' + architecture_dir + '/' + testfile
-        exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile)
+        print('\nRunning test: ' + testfile + '\n')
+        if xran:
+            testfile = l1 + '/' + testfile
+        else:
+            testfile = testmac + '/' + architecture_dir + '/' + testfile
+
+        exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile, xran)
 
 def get_tests_from_yaml(cfg):
     try:
@@ -99,13 +108,13 @@ def get_tests_from_yaml(cfg):
     except:
         sys.exit("Can't open or parse %s" %(cfg))
 
-    if 'Tests' in config_yaml:
+    if 'Tests' in config_yaml and config_yaml['Tests'] is not None:
         return config_yaml['Tests']
     else:
         print('No tests in config...')
         return []
 
-def get_architecture_from_yaml(cfg):
+def get_architecture_from_yaml(cfg, xran):
     try:
         f = open(cfg, 'r')
         config_yaml = yaml.safe_load(f)
@@ -113,11 +122,15 @@ def get_architecture_from_yaml(cfg):
     except:
         sys.exit("Can't open or parse %s" %(cfg))
 
-    if 'Arch_dir' in config_yaml:
-        return config_yaml['Arch_dir']
+    if xran:
+        print("No architecture directory required for xran tests")
+        return
     else:
-        print('No architecture directory in config...')
-        exit(1)
+        if 'Arch_dir' in config_yaml:
+            return config_yaml['Arch_dir']
+        else:
+            print('No architecture directory in config...')
+            exit(1)
 
 def copy_files(pod_name, destination, files):
     print('\nCopying files to pod \'' + pod_name + '\':')
@@ -187,8 +200,43 @@ def check_and_start_pod(name, api_instance, restart):
     return
 
 def exec_updates(name, api_instance, destination, testmac,
-                 l1, testfile, cfg, no_sibling):
-    # Calling exec interactively
+                 l1, test_list, cfg, no_sibling, architecture_dir, xran):
+    commands = [
+        'pip3 install lxml',
+        'pip3 install dataclasses',
+        "cd " + destination,
+    ]
+
+    run_commands_on_pod(name, api_instance, commands)
+
+    for testfile in test_list:
+        if xran:
+            testfile = l1 + '/' + testfile
+        else:
+            testfile = testmac + '/' + architecture_dir + '/' + testfile
+        update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg.split('/')[-1]
+
+        if xran:
+            update_command = update_command + ' --phystart'
+
+        if no_sibling:
+            update_command = update_command + ' --no_sibling'
+
+        # Is there a generic way to install these dependencies? VENV? pip3 freeze
+        commands = [
+            update_command,
+        ]
+
+        output = run_commands_on_pod(name, api_instance, commands)
+        if "Files updated." in output:
+            if DEBUG:
+                print(output)
+            print("Finished updating files on pod.\n")
+        else:
+            print(output)
+            sys.exit(1)
+
+def run_commands_on_pod(name, api_instance, commands):
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
@@ -197,19 +245,6 @@ def exec_updates(name, api_instance, destination, testmac,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
                   _preload_content=False)
-
-    update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg.split('/')[-1]
-
-    if no_sibling:
-        update_command = update_command + ' --no_sibling'
-
-    # Is there a generic way to install these dependencies? VENV? pip3 freeze
-    commands = [
-        'pip3 install lxml',
-        'pip3 install dataclasses',
-        "cd " + destination,
-        update_command,
-    ]
 
     while resp.is_open():
         if commands:
@@ -223,15 +258,9 @@ def exec_updates(name, api_instance, destination, testmac,
 
     resp.run_forever(5)
     output = resp.read_stdout()
-    if "Files updated." in output:
-        if DEBUG:
-            print(output)
-        print("Finished updating files on pod.\n")
-    else:
-        print(output)
-        sys.exit(1)
+    return output
 
-def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
+def exec_commands(name, api_instance, pod_name, testmac, l1, testfile, xran):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -241,11 +270,15 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
                   _preload_content=False)
+
     commands = [
         "source /opt/flexran/auto/env.src",
         "cd " + l1,
-        "./l1.sh -e",
     ]
+    if xran:
+        commands.append("./l1.sh -oru")
+    else:
+        commands.append("./l1.sh -e")
 
     while resp.is_open():
         if commands:
@@ -257,7 +290,7 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
         else:
             break
 
-    resp.run_forever(5)
+    resp.run_forever(10)
     output = resp.read_stdout()
     if "welcome" in output:
         print("l1app ready\n")
@@ -308,6 +341,7 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
         l1_output = l1_output + resp.read_stdout()
         result = re.search(r"All Tests Completed.*\n", testmac_output)
         if result:
+
             print('Checking directory status...')
             directory_exits = os.path.isdir(RESULTS_DIR)
             if not directory_exits:
@@ -316,36 +350,49 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile):
             else:
                 print('Results directory exits')
 
-            test_dir = (testfile.split('/')[-1]).split('.')[0]
+            test_dir = RESULTS_DIR + '/' + (testfile.split('/')[-1]).split('.')[0]
             directory_exits = os.path.isdir(test_dir)
             if not directory_exits:
                 os.makedirs(test_dir)
-                print('Created results/' + test_dir + ' directory')
+                print('Created ' + test_dir + ' directory')
             else:
-                print('results/' + test_dir + ' directory exits')
+                print(test_dir + ' directory exits')
+
+            time_dir = test_dir + '/' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            directory_exits = os.path.isdir(time_dir)
+            if not directory_exits:
+                os.makedirs(time_dir)
+                print('Created ' + time_dir + ' directory')
+            else:
+                print(time_dir + ' directory exits')
 
             print(result.group())
             print("Copying stat file (l1_mlog_stats.txt) to results directory...")
 
+            if xran:
+                mlog_path = l1.split('l1')[0] + 'l1' + '/l1_mlog_stats.txt'
+            else:
+                mlog_path = l1 + '/l1_mlog_stats.txt'
             copy_output = subprocess.check_output(
-                    ['oc', 'cp', pod_name + ':' + l1 + '/l1_mlog_stats.txt', "./" + RESULTS_DIR + '/' + test_dir + "/l1_mlog_stats.txt"])
+                    ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
+
             #print(output)
             print("Writing l1 output (l1.txt) to results directory...")
-            l1_out = open('./' + RESULTS_DIR + '/' + test_dir + '/l1.txt', 'w')
+            l1_out = open('./' + time_dir + '/l1.txt', 'w')
             out = l1_out.write(l1_output)
             l1_out.close()
 
             print("Writing testfile output (testmac.txt) to results directory...")
-            test_output = open('./' + RESULTS_DIR + '/' + test_dir + '/testmac.txt', 'w')
+            test_output = open('./' + time_dir + '/testmac.txt', 'w')
             out = test_output.write(testmac_output)
             test_output.close()
 
             print("Completed.")
             break
 
-    resp.write_stdin("exit\n")
-    time.sleep(1)
-    testmac_resp.write_stdin("exit\n")
+    resp.write_stdin("exit\r\n")
+    testmac_resp.write_stdin("exit\r\n")
+    time.sleep(5)
     resp.close()
     testmac_resp.close()
 

@@ -37,5 +37,7 @@ Dpdk_cfgs:
       dpdkMemorySize: 4096
       dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
 
+Arch_dir: cascade_lake-sp 
+
 Tests:
   - clxsp_mu0_10mhz_4x4_hton.cfg
