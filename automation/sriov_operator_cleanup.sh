@@ -8,13 +8,13 @@ source ./functions.sh
 parse_args $@
 
 echo "Removing sriov network ..."
-oc delete -f ${MANIFEST_DIR}/sriov-network.yaml
+[ -e ${MANIFEST_DIR}/sriov-network.yaml ] && oc delete -f ${MANIFEST_DIR}/sriov-network.yaml
 echo "Removing sriov network: done"
 
 sleep 1
 
 echo "Removing SriovNetworkNodePolicy ..."
-oc delete -f ${MANIFEST_DIR}/sriov-nic-policy.yaml
+[ -e ${MANIFEST_DIR}/sriov-nic-policy.yaml ] && oc delete -f ${MANIFEST_DIR}/sriov-nic-policy.yaml
 echo "Removing SriovNetworkNodePolicy: done"
 
 # is VF down?
