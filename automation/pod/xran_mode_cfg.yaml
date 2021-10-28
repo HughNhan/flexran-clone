@@ -1,12 +1,10 @@
 Cfg_file_paths:
-  1: 
-    phycfg_xran: cfg_examples/
-  2: 
-    xrancfg_sub6_oru: cfg_examples/
-  3: 
-    testmac_cfg: cfg_examples/
-    
-
+  1:
+    phycfg_xran: /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_10mhz_4x4/gnb/
+  2:
+    xrancfg_sub6_oru: /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_10mhz_4x4/gnb/
+  3:
+    testmac_cfg: /opt/flexran/bin/nr5g/gnb/testmac/
 Threads:
   1:
     phycfg_xran:
@@ -26,7 +24,7 @@ Threads:
   2:
     phycfg_xran:
       timerThread:
-        pri: 96 
+        pri: 96
       radioDpdkMaster:
         pri: 99
   3:
@@ -42,14 +40,16 @@ Threads:
       wlsRxThread:
         pri: 90
 
-
-
 Dpdk_cfgs:
   1:
     phycfg_xran:
-      dpdkMemorySize: 4096
-      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_5G
+      dpdkMemorySize: 8192
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
   2:
     xrancfg_sub6_oru:
       test_mode: xran
 
+Xran_dir: sub3_mu0_10mhz_4x4
+
+Tests:
+  - testmac_clxsp_mu0_10mhz_hton_oru.cfg

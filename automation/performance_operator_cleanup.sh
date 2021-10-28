@@ -15,4 +15,3 @@ if [[ "${WAIT_MCP}" == "true" ]]; then
 fi
 
 echo "Removing performance profile: done"
-
