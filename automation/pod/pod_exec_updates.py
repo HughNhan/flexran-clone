@@ -53,6 +53,9 @@ def main():
         help='a flag which will cause the pod to restart (useful for between each test)')
     parser.add_argument('-x', '--xran', default=False, action='store_true',
         help='a flag indicating xran test mode')
+    parser.add_argument('-phystart', '--phystart', default=False,
+        required=False, action='store_true',
+        help='a flag indicating quick phystart in xran mode (phystart 4 0 100007)')
 
     args = parser.parse_args()
     pod_name = args.pod
@@ -66,6 +69,7 @@ def main():
     directories = args.dir
     restart = args.restart
     xran = args.xran
+    phystart = args.phystart
 
     config.load_kube_config()
     try:
@@ -89,7 +93,7 @@ def main():
     architecture_dir = get_architecture_from_yaml(cfg, xran)
 
     exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
-                 no_sibling, architecture_dir, xran)
+                 no_sibling, architecture_dir, xran, phystart)
 
     for testfile in test_list:
         print('\nRunning test: ' + testfile + '\n')
@@ -200,7 +204,8 @@ def check_and_start_pod(name, api_instance, restart):
     return
 
 def exec_updates(name, api_instance, destination, testmac,
-                 l1, test_list, cfg, no_sibling, architecture_dir, xran):
+                 l1, test_list, cfg, no_sibling, architecture_dir, xran,
+                 phystart):
     commands = [
         'pip3 install lxml',
         'pip3 install dataclasses',
@@ -216,7 +221,7 @@ def exec_updates(name, api_instance, destination, testmac,
             testfile = testmac + '/' + architecture_dir + '/' + testfile
         update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg.split('/')[-1]
 
-        if xran:
+        if xran and phystart:
             update_command = update_command + ' --phystart'
 
         if no_sibling:
