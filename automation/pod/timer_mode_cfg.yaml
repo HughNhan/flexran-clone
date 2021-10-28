@@ -1,9 +1,8 @@
 Cfg_file_paths:
-  1: 
-    phycfg_timer: cfg_examples/
-  2: 
-    testmac_cfg: cfg_examples/
-    
+  1:
+    phycfg_timer: /opt/flexran/bin/nr5g/gnb/l1/
+  2:
+    testmac_cfg: /opt/flexran/bin/nr5g/gnb/testmac/
 
 Threads:
   1:
@@ -24,7 +23,7 @@ Threads:
   2:
     phycfg_timer:
       timerThread:
-        pri: 96 
+        pri: 96
       radioDpdkMaster:
         pri: 99
   3:
@@ -35,5 +34,10 @@ Threads:
 Dpdk_cfgs:
   1:
     phycfg_timer:
-      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
       dpdkMemorySize: 4096
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_ACC100
+
+Arch_dir: cascade_lake-sp
+
+Tests:
+  - clxsp_mu0_10mhz_4x4_hton.cfg
