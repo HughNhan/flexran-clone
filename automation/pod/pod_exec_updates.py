@@ -50,6 +50,9 @@ def main():
     parser.add_argument('-phystart', '--phystart', default=False,
         required=False, action='store_true',
         help='a flag indicating quick phystart in xran mode (phystart 4 0 100007)')
+    parser.add_argument('-namespace', '--namespace', type=str,
+        required=True,
+        help='the namespace of the pod')
 
     # Parse arguments.
     args = parser.parse_args()
@@ -62,6 +65,7 @@ def main():
     #restart = args.restart
     xran = args.xran
     phystart = args.phystart
+    pod_namespace = args.namespace
 
     # Get Kube configuration.
     config.load_kube_config()
@@ -73,9 +77,9 @@ def main():
     Configuration.set_default(c)
     core_v1 = core_v1_api.CoreV1Api()
 
-    #check_and_start_pod(pod_name, core_v1, restart)
+    #check_and_start_pod(pod_name, core_v1, restart, , pod_namespace)
     # Check the pod is running, exit otherwise.
-    check_pod(pod_name, core_v1)
+    check_pod(pod_name, core_v1, pod_namespace)
 
     if files:
         copy_files(pod_name, destination, files)
@@ -90,7 +94,7 @@ def main():
 
     # Update the testfiles and xml configurations on the pod.
     exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
-                 no_sibling, architecture_dir, xran, phystart)
+                 no_sibling, architecture_dir, xran, phystart, pod_namespace)
 
     for testfile in test_list:
         print('--------------------------------------------------------------' +
@@ -102,7 +106,7 @@ def main():
         else:
             testfile = testmac + '/' + architecture_dir + '/' + testfile
         # Run the test on the pod.
-        exec_tests(pod_name, core_v1, pod_name, testmac, l1, testfile, xran)
+        exec_tests(pod_name, core_v1, pod_name, testmac, l1, testfile, xran, pod_namespace)
 
 # A method to get the tests from the YAML file, taking in the path to the YAML
 # config file and returning the list of tests.
@@ -211,16 +215,18 @@ def copy_directories(pod_name, destination, directories):
 # A method to check if the pod is running. Exit if it does not exist, as the
 # assumption is that the pod will be running and configured for tests before
 # this script is called.
-def check_pod(name, api_instance):
+def check_pod(name, api_instance, pod_namespace):
     resp = None
     try:
         resp = api_instance.read_namespaced_pod(name=name,
-                                                namespace='default')
+                                                namespace=pod_namespace)
     except ApiException as e:
         if e.status != 404:
             print("Unknown error: %s" % e)
             exit(1)
     if not resp or resp.status.phase != 'Running':
+        print(resp)
+        print(resp.status.phase)
         print("Pod %s does not exist. Exiting..." % name)
         exit(1)
 
@@ -228,11 +234,11 @@ def check_pod(name, api_instance):
 # check_pod above, this does not exit, it will attempt to start the pod. This
 # is unused in the current end-to-end automation as this is handled before this
 # script is called.
-def check_and_start_pod(name, api_instance, restart):
+def check_and_start_pod(name, api_instance, restart, pod_namespace):
     resp = None
     try:
         resp = api_instance.read_namespaced_pod(name=name,
-                                                namespace='default')
+                                                namespace=pod_namespace)
     except ApiException as e:
         if e.status != 404:
             print("Unknown error: %s" % e)
@@ -241,11 +247,11 @@ def check_and_start_pod(name, api_instance, restart):
     if (resp and resp.status.phase != 'Running') or restart:
         print("Pod %s exists but but will be restarted. Deleting it..." % name)
         resp = api_instance.delete_namespaced_pod(name=name,
-                                                namespace='default')
+                                                namespace=pod_namespace)
         while True:
             try:
                 resp = api_instance.read_namespaced_pod(name=name,
-                                                        namespace='default')
+                                                        namespace=pod_namespace)
             except:
                 break
             time.sleep(1)
@@ -255,10 +261,10 @@ def check_and_start_pod(name, api_instance, restart):
         with open("pod_flexran_n3000.yaml", "r") as f:
             pod_manifest = yaml.safe_load(f)
         resp = api_instance.create_namespaced_pod(body=pod_manifest,
-                                                  namespace='default')
+                                                  namespace=pod_namespace)
         while True:
             resp = api_instance.read_namespaced_pod(name=name,
-                                                    namespace='default')
+                                                    namespace=pod_namespace)
             if resp.status.phase != 'Pending':
                 break
             time.sleep(1)
@@ -269,14 +275,14 @@ def check_and_start_pod(name, api_instance, restart):
 # pod.
 def exec_updates(name, api_instance, destination, testmac,
                  l1, test_list, cfg, no_sibling, architecture_dir, xran,
-                 phystart):
+                 phystart, pod_namespace):
     commands = [
         'pip3 install lxml',
         'pip3 install dataclasses',
         "cd " + destination,
     ]
 
-    run_commands_on_pod(name, api_instance, commands)
+    run_commands_on_pod(name, api_instance, commands, pod_namespace)
 
     for testfile in test_list:
         if xran:
@@ -306,11 +312,11 @@ def exec_updates(name, api_instance, destination, testmac,
             sys.exit(1)
 
 # A method which can run a list of commands on the pod.
-def run_commands_on_pod(name, api_instance, commands):
+def run_commands_on_pod(name, api_instance, commands, pod_namespace):
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
-                  'default',
+                  pod_namespace,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
@@ -331,12 +337,12 @@ def run_commands_on_pod(name, api_instance, commands):
     return output
 
 # A method to execute the given test on the pod.
-def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran):
+def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_namespace):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
-                  'default',
+                  pod_namespace,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
@@ -372,7 +378,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran):
 
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
-                  'default',
+                  pod_namespace,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
