@@ -24,3 +24,5 @@ done
 for pytool in yq; do
     pip3 install ${pytool} 
 done
+
+pip3 install kubernetes
