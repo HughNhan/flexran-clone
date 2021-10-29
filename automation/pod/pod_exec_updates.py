@@ -225,8 +225,6 @@ def check_pod(name, api_instance, pod_namespace):
             print("Unknown error: %s" % e)
             exit(1)
     if not resp or resp.status.phase != 'Running':
-        print(resp)
-        print(resp.status.phase)
         print("Pod %s does not exist. Exiting..." % name)
         exit(1)
 
