@@ -300,7 +300,7 @@ def exec_updates(name, api_instance, destination, testmac,
             update_command,
         ]
 
-        output = run_commands_on_pod(name, api_instance, commands)
+        output = run_commands_on_pod(name, api_instance, commands, pod_namespace)
         if "Files updated." in output:
             if DEBUG:
                 print(output)
