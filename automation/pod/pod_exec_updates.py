@@ -31,12 +31,6 @@ def main():
     parser.add_argument('-d', '--dest', metavar='destination', type=str,
         required=True,
         help='the destination directory on the pod')
-    parser.add_argument('-testmac', '--testmac_dir',
-        metavar='testmac_directory', type=str, required=True,
-        help='the testmac directory on the pod')
-    parser.add_argument('-l1', '--l1_dir',
-        metavar='l1_directory', type=str, required=True,
-        help='the l1 directory on the pod')
     parser.add_argument('-c', '--cfg', metavar='cfg', type=str,
         required=True,
         help='the configuration file to update threads, define paths, and get tests')
@@ -49,28 +43,27 @@ def main():
         type=str, required=False,
         help='the directory(ies) to be copied to the pod (requires rsync or ' +
              'tar on pod)')
-    parser.add_argument('-r', '--restart', default=False, action='store_true',
-        help='a flag which will cause the pod to restart (useful for between each test)')
+    #parser.add_argument('-r', '--restart', default=False, action='store_true',
+    #    help='a flag which will cause the pod to restart (useful for between each test)')
     parser.add_argument('-x', '--xran', default=False, action='store_true',
         help='a flag indicating xran test mode')
     parser.add_argument('-phystart', '--phystart', default=False,
         required=False, action='store_true',
         help='a flag indicating quick phystart in xran mode (phystart 4 0 100007)')
 
+    # Parse arguments.
     args = parser.parse_args()
     pod_name = args.pod
     destination = args.dest
-    testmac = args.testmac_dir
-    l1 = args.l1_dir
-    #testfile = args.testfile
     cfg = args.cfg
     no_sibling = args.no_sibling
     files = args.file
     directories = args.dir
-    restart = args.restart
+    #restart = args.restart
     xran = args.xran
     phystart = args.phystart
 
+    # Get Kube configuration.
     config.load_kube_config()
     try:
         c = Configuration().get_default_copy()
@@ -81,6 +74,7 @@ def main():
     core_v1 = core_v1_api.CoreV1Api()
 
     #check_and_start_pod(pod_name, core_v1, restart)
+    # Check the pod is running, exit otherwise.
     check_pod(pod_name, core_v1)
 
     if files:
@@ -89,21 +83,29 @@ def main():
         copy_directories(pod_name, destination, directories)
 
     test_list = get_tests_from_yaml(cfg)
-
     architecture_dir = get_architecture_from_yaml(cfg, xran)
 
+    l1 = get_l1_from_yaml(cfg)
+    testmac = get_testmac_from_yaml(cfg)
+
+    # Update the testfiles and xml configurations on the pod.
     exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
                  no_sibling, architecture_dir, xran, phystart)
 
     for testfile in test_list:
-        print('\nRunning test: ' + testfile + '\n')
+        print('--------------------------------------------------------------' +
+              '------------------\nRunning test: ' + testfile + '\n----------' +
+              '--------------------------------------------------------------' +
+              '--------')
         if xran:
             testfile = l1 + '/' + testfile
         else:
             testfile = testmac + '/' + architecture_dir + '/' + testfile
+        # Run the test on the pod.
+        exec_tests(pod_name, core_v1, pod_name, testmac, l1, testfile, xran)
 
-        exec_commands(pod_name, core_v1, pod_name, testmac, l1, testfile, xran)
-
+# A method to get the tests from the YAML file, taking in the path to the YAML
+# config file and returning the list of tests.
 def get_tests_from_yaml(cfg):
     try:
         f = open(cfg, 'r')
@@ -118,6 +120,9 @@ def get_tests_from_yaml(cfg):
         print('No tests in config...')
         return []
 
+# A method to get the cpu architecture directory from the YAML file, taking in
+# the path to the YAML config file and returning the directory. The xran flag
+# is also passed in, as this does not apply to xran tests.
 def get_architecture_from_yaml(cfg, xran):
     try:
         f = open(cfg, 'r')
@@ -136,6 +141,53 @@ def get_architecture_from_yaml(cfg, xran):
             print('No architecture directory in config...')
             exit(1)
 
+# A method to get the l1 directory from the YAML file, taking in the path to
+# the YAML config file and returning the path.
+def get_l1_from_yaml(cfg):
+    try:
+        f = open(cfg, 'r')
+        config_yaml = yaml.safe_load(f)
+        f.close()
+    except:
+        sys.exit("Can't open or parse %s" %(cfg))
+
+    if 'Cfg_file_paths' in config_yaml:
+        for index in config_yaml['Cfg_file_paths']:
+            for config_name in config_yaml['Cfg_file_paths'][index]:
+                if config_name[0:6] == 'phycfg':
+                    if config_yaml['Cfg_file_paths'][index][config_name][-1] == '/':
+                        return config_yaml['Cfg_file_paths'][index][config_name][:-1]
+                    else:
+                        return config_yaml['Cfg_file_paths'][index][config_name]
+    else:
+        print('No config files in config...')
+        exit(1)
+
+# A method to get the testmac directory from the YAML file, taking in the path
+# to the YAML config file and returning the path.
+def get_testmac_from_yaml(cfg):
+    try:
+        f = open(cfg, 'r')
+        config_yaml = yaml.safe_load(f)
+        f.close()
+    except:
+        sys.exit("Can't open or parse %s" %(cfg))
+
+    if 'Cfg_file_paths' in config_yaml:
+        for index in config_yaml['Cfg_file_paths']:
+            for config_name in config_yaml['Cfg_file_paths'][index]:
+                if config_name[0:7] == 'testmac':
+                    if config_yaml['Cfg_file_paths'][index][config_name][-1] == '/':
+                        return config_yaml['Cfg_file_paths'][index][config_name][:-1]
+                    else:
+                        return config_yaml['Cfg_file_paths'][index][config_name]
+    else:
+        print('No config files in config...')
+        exit(1)
+
+# A method to copy a list of files from the host to the pod at the passed
+# destination. This is used to move the scripts, configuration files, etc. to
+# the pod.
 def copy_files(pod_name, destination, files):
     print('\nCopying files to pod \'' + pod_name + '\':')
     for file in files:
@@ -144,7 +196,10 @@ def copy_files(pod_name, destination, files):
         print(file)
     return
 
-# NOTE: Need to enable rsync or tar on pod.
+# A method to copy a list of directories from the host to the pod at the passed
+# destination. This is used to move the scripts, configuration files, etc. to
+# the pod.
+# NOTE: Need to enable rsync on pod.
 def copy_directories(pod_name, destination, directories):
     print('Copying directories to pod \'' + pod_name + '\':')
     for directory in directories:
@@ -153,6 +208,9 @@ def copy_directories(pod_name, destination, directories):
         print(directory)
     return
 
+# A method to check if the pod is running. Exit if it does not exist, as the
+# assumption is that the pod will be running and configured for tests before
+# this script is called.
 def check_pod(name, api_instance):
     resp = None
     try:
@@ -166,6 +224,10 @@ def check_pod(name, api_instance):
         print("Pod %s does not exist. Exiting..." % name)
         exit(1)
 
+# A method to check if the pod is running and start it if needed. Unlike
+# check_pod above, this does not exit, it will attempt to start the pod. This
+# is unused in the current end-to-end automation as this is handled before this
+# script is called.
 def check_and_start_pod(name, api_instance, restart):
     resp = None
     try:
@@ -203,6 +265,8 @@ def check_and_start_pod(name, api_instance, restart):
         print("Done.")
     return
 
+# A method to execute updates to the testfiles and xml configurations on the
+# pod.
 def exec_updates(name, api_instance, destination, testmac,
                  l1, test_list, cfg, no_sibling, architecture_dir, xran,
                  phystart):
@@ -241,6 +305,7 @@ def exec_updates(name, api_instance, destination, testmac,
             print(output)
             sys.exit(1)
 
+# A method which can run a list of commands on the pod.
 def run_commands_on_pod(name, api_instance, commands):
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -265,7 +330,8 @@ def run_commands_on_pod(name, api_instance, commands):
     output = resp.read_stdout()
     return output
 
-def exec_commands(name, api_instance, pod_name, testmac, l1, testfile, xran):
+# A method to execute the given test on the pod.
+def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -294,7 +360,8 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile, xran):
             resp.write_stdin("\n")
         else:
             break
-
+    # NOTE: This time might need adjusting, run_forever(5) ran into some
+    #       crashing issues which we think have to do with timing.
     resp.run_forever(10)
     output = resp.read_stdout()
     if "welcome" in output:
@@ -340,6 +407,7 @@ def exec_commands(name, api_instance, pod_name, testmac, l1, testfile, xran):
 
     testmac_output = ''
 
+    # TODO: Move to a new method.
     while testmac_resp.is_open():
         testmac_resp.run_forever(3)
         testmac_output = testmac_output + testmac_resp.read_stdout()
