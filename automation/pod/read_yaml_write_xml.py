@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from re import T
 import subprocess
 import sys, yaml, os
 from typing import Any, Dict, List, Optional
@@ -59,14 +60,24 @@ class CfgDpdk:
     base_band_device_val: str = field(init=False, default="0000:1f:00.1")
 
     #xran mode cfg fields
+    #default string is "PCIDEVICE_OPENSHIFT_IO_INTELNICS0"
     #PCIDEVICE_OPENSHIFT_IO_INTELNICS0=0000:65:02.5,0000:65:02.6
-    env_pcidevice_openshift_str: str = "PCIDEVICE_OPENSHIFT_IO_INTELNICS0"
+    env_pcidevice_openshift_default_str: str = "PCIDEVICE_OPENSHIFT_IO_INTELNICS0"
+
+    #label if pcidevice enviromental supplied 
+    env_pcidevice: bool = field(init=True, default=False)
+    #label if pcidevice parameters get updated 
+    pcidevice_update: bool = field(init=True, default=False)
 
     pci_bus_ru0vf0_str: str = "PciBusAddoRu0Vf0"
     pci_bus_ru0vf0_val: str = field(init=False, default="0000:1a:02.0")
     pci_bus_ru0vf1_str: str = "PciBusAddoRu0Vf1"
     pci_bus_ru0vf1_val: str = field(init=False, default="0000:1a:02.1")
 
+    def validate_pci_cfg(self) -> bool:
+        if(self.test_mode_xran):
+            return self.pcidevice_update
+        return True
 
 
 class CfgData:
@@ -189,6 +200,19 @@ class CfgData:
 
     #start of methods for dpdk config
     @classmethod
+    def validate_dpdk_pci_cfg(cls) -> bool:
+        #print("validate_dpdk_pci_cfg")
+        for file_name in cls.dict_list_cfg_dpdks.keys():
+            for a_dpdk_cfg in cls.dict_list_cfg_dpdks[file_name]:
+                if a_dpdk_cfg.validate_pci_cfg() == False:
+                    #invalide config
+                    #print("invalidate cfg")
+                    sys.exit("file: %s " %(file_name + " has xrantest mode but no validate pcidevice env"))
+
+        return True
+
+
+    @classmethod
     def read_dpdks_yaml(cls, yaml_data: Any):
         #print("read_dpdks_yaml")
         yaml_dpdks = yaml_data["Dpdk_cfgs"]
@@ -202,6 +226,9 @@ class CfgData:
                 cfg_name = cfg + ".xml"
                 for dpdk_field in dpdk:
                     cls.load_dpdk_cfg(cfg_name, dpdk_field, dpdk[dpdk_field])
+        #need to validate the PCIDEVICE_OPENSHIFT_ config
+        cls.validate_dpdk_pci_cfg()
+        
 
     @classmethod
     def load_dpdk_cfg(cls, cfg_file: str, cfg_field: str, cfg_val: Any):
@@ -218,12 +245,11 @@ class CfgData:
         if cfg_field == "test_mode":
             #print("test_mode: xran ")
             a_dpdk_cfg.test_mode_xran = True
-            env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_str)
-            if env_value is not None:
-               a_dpdk_cfg.pci_bus_ru0vf0_val, a_dpdk_cfg.pci_bus_ru0vf1_val = env_value.split(',', 1)
-            else:
-                #invalid config
-                sys.exit("The evn varible is not set in xran test mode ")
+            if a_dpdk_cfg.env_pcidevice == False:
+                env_value = get_env_variable(CfgDpdk.env_pcidevice_openshift_default_str)
+                if env_value is not None:
+                    a_dpdk_cfg.pcidevice_update = True
+                    a_dpdk_cfg.pci_bus_ru0vf0_val, a_dpdk_cfg.pci_bus_ru0vf1_val = env_value.split(',', 1)
         elif cfg_field == "dpdkEnvModeStr": 
             env_value = get_env_variable(cfg_val)
             #print("env str: ", cfg_val)
@@ -233,6 +259,18 @@ class CfgData:
             else:
                 a_dpdk_cfg.base_band_fec_mode_val = 1
                 a_dpdk_cfg.base_band_device_val = env_value
+                #print("passed in env value ", env_value)
+        elif cfg_field == "pcideviceOpenshiftIoStr": 
+            a_dpdk_cfg.env_pcidevice = True
+            env_value = get_env_variable(cfg_val)
+            #print("env str: ", cfg_val)
+            #print("env value: ", env_value)
+            if(env_value is None):
+                #invalid config
+                sys.exit("The env pcideviceOpenshiftIoStr variable in cfg is not set in xran test mode ")
+            else:
+                a_dpdk_cfg.pcidevice_update = True
+                a_dpdk_cfg.pci_bus_ru0vf0_val, a_dpdk_cfg.pci_bus_ru0vf1_val = env_value.split(',', 1)
                 #print("passed in env value ", env_value)
         else:
             a_dpdk_cfg.mem_size_str = cfg_field
@@ -313,7 +351,7 @@ class CfgData:
 
     #end of methods for dpdk config
 
-    #start of commond methods
+    #start of common methods
     @classmethod
     def read_cfg_yaml(cls, cfg_yaml, cpu_resource: CpuResource):
 

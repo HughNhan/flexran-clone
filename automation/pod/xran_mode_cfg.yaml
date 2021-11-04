@@ -1,10 +1,10 @@
 Cfg_file_paths:
   1:
-    phycfg_xran: /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_10mhz_4x4/gnb/
+    phycfg_xran: cfg_examples/
   2:
-    xrancfg_sub6_oru: /opt/flexran/bin/nr5g/gnb/l1/orancfg/sub3_mu0_10mhz_4x4/gnb/
+    xrancfg_sub6_oru: cfg_examples/
   3:
-    testmac_cfg: /opt/flexran/bin/nr5g/gnb/testmac/
+    testmac_cfg: cfg_examples/
 Threads:
   1:
     phycfg_xran:
@@ -48,6 +48,7 @@ Dpdk_cfgs:
   2:
     xrancfg_sub6_oru:
       test_mode: xran
+      pcideviceOpenshiftIoStr: PCIDEVICE_OPENSHIFT_IO_INTELNICS0
 
 Xran_dir: sub3_mu0_10mhz_4x4
 
