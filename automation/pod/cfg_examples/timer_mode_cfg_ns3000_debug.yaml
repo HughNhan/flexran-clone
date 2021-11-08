@@ -1,0 +1,43 @@
+Cfg_file_paths:
+  1:
+    phycfg_timer: /opt/flexran/bin/nr5g/gnb/l1/
+  2:
+    testmac_cfg: /opt/flexran/bin/nr5g/gnb/testmac/
+
+Threads:
+  1:
+    phycfg_timer:
+      systemThread:
+        pri: 0
+      FpgaDriverCpuInfo:
+        pri: 0
+      FrontHaulCpuInfo:
+        pri: 0
+    testmac_cfg:
+      systemThread:
+        pri: 0
+      runThread:
+        pri: 3 
+      urllcThread:
+        pri: 2 
+  2:
+    phycfg_timer:
+      timerThread:
+        pri: 6
+      radioDpdkMaster:
+        pri: 3 
+  3:
+    testmac_cfg:
+      wlsRxThread:
+        pri: 2
+
+Dpdk_cfgs:
+  1:
+    phycfg_timer:
+      dpdkMemorySize: 4096
+      dpdkEnvModeStr: PCIDEVICE_INTEL_COM_INTEL_FEC_5G
+
+Arch_dir: cascade_lake-sp
+
+Tests:
+  - clxsp_mu0_20mhz_4x4_hton.cfg
