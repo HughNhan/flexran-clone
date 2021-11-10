@@ -53,6 +53,9 @@ def main():
     parser.add_argument('-namespace', '--namespace', type=str,
         required=True,
         help='the namespace of the pod')
+    parser.add_argument('-timeout', '--timeout', type=int,
+        required=True,
+        help='the timeout (in seconds) for the test')
 
     # Parse arguments.
     args = parser.parse_args()
@@ -66,6 +69,7 @@ def main():
     xran = args.xran
     phystart = args.phystart
     pod_namespace = args.namespace
+    timeout = args.timeout
 
     # Get Kube configuration.
     config.load_kube_config()
@@ -106,7 +110,7 @@ def main():
         else:
             testfile = testmac + '/' + architecture_dir + '/' + testfile
         # Run the test on the pod.
-        exec_tests(pod_name, core_v1, pod_name, testmac, l1, testfile, xran, pod_namespace)
+        exec_tests(pod_name, core_v1, pod_name, testmac, l1, testfile, xran, pod_namespace, timeout)
 
 # A method to get the tests from the YAML file, taking in the path to the YAML
 # config file and returning the list of tests.
@@ -335,7 +339,7 @@ def run_commands_on_pod(name, api_instance, commands, pod_namespace):
     return output
 
 # A method to execute the given test on the pod.
-def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_namespace):
+def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_namespace, timeout):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -404,67 +408,33 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     if "welcome" in output:
         print("Testmac ready\n")
     else:
+        print("Testmac failed to start!\n")
         print(output)
+        write_to_files(testfile, '', xran, l1, pod_name, l1_output, testmac_output)
         sys.exit(1)
 
     print('Running tests...')
 
     testmac_output = ''
 
-    # TODO: Move to a new method.
+    last_update = 0
+    timed_out = False
     while testmac_resp.is_open():
         testmac_resp.run_forever(3)
         testmac_output = testmac_output + testmac_resp.read_stdout()
         l1_output = l1_output + resp.read_stdout()
         result = re.search(r"All Tests Completed.*\n", testmac_output)
-        if result:
+        seg_fault = re.search(r"Segmentation Fault!*\n", testmac_output)
+        core_os_terminal = re.search(r".*\#", testmac_output)
 
-            print('Checking directory status...')
-            directory_exits = os.path.isdir(RESULTS_DIR)
-            if not directory_exits:
-                os.makedirs(RESULTS_DIR)
-                print('Created results directory')
-            else:
-                print('Results directory exits')
+        if testmac_output:
+            last_update = time.time()
+        elif time.time() - last_update >= timeout:
+            print('Testmac timed out without update!\n')
+            timed_out = True
 
-            test_dir = RESULTS_DIR + '/' + (testfile.split('/')[-1]).split('.')[0]
-            directory_exits = os.path.isdir(test_dir)
-            if not directory_exits:
-                os.makedirs(test_dir)
-                print('Created ' + test_dir + ' directory')
-            else:
-                print(test_dir + ' directory exits')
-
-            time_dir = test_dir + '/' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            directory_exits = os.path.isdir(time_dir)
-            if not directory_exits:
-                os.makedirs(time_dir)
-                print('Created ' + time_dir + ' directory')
-            else:
-                print(time_dir + ' directory exits')
-
-            print(result.group())
-            print("Copying stat file (l1_mlog_stats.txt) to results directory...")
-
-            if xran:
-                mlog_path = l1.split('l1')[0] + 'l1' + '/l1_mlog_stats.txt'
-            else:
-                mlog_path = l1 + '/l1_mlog_stats.txt'
-            copy_output = subprocess.check_output(
-                    ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
-
-            #print(output)
-            print("Writing l1 output (l1.txt) to results directory...")
-            l1_out = open('./' + time_dir + '/l1.txt', 'w')
-            out = l1_out.write(l1_output)
-            l1_out.close()
-
-            print("Writing testfile output (testmac.txt) to results directory...")
-            test_output = open('./' + time_dir + '/testmac.txt', 'w')
-            out = test_output.write(testmac_output)
-            test_output.close()
-
-            print("Completed.")
+        if result or seg_fault or core_os_terminal or timed_out:
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
             break
 
     resp.write_stdin("exit\r\n")
@@ -472,6 +442,56 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     time.sleep(5)
     resp.close()
     testmac_resp.close()
+
+def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output):
+    print('Checking directory status...')
+    directory_exits = os.path.isdir(RESULTS_DIR)
+    if not directory_exits:
+        os.makedirs(RESULTS_DIR)
+        print('Created results directory')
+    else:
+        print('Results directory exits')
+
+    test_dir = RESULTS_DIR + '/' + (testfile.split('/')[-1]).split('.')[0]
+    directory_exits = os.path.isdir(test_dir)
+    if not directory_exits:
+        os.makedirs(test_dir)
+        print('Created ' + test_dir + ' directory')
+    else:
+        print(test_dir + ' directory exits')
+
+    time_dir = test_dir + '/' + datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    directory_exits = os.path.isdir(time_dir)
+    if not directory_exits:
+        os.makedirs(time_dir)
+        print('Created ' + time_dir + ' directory')
+    else:
+        print(time_dir + ' directory exits')
+
+    print(result.group())
+    print("Copying stat file (l1_mlog_stats.txt) to results directory...")
+
+    if xran:
+        mlog_path = l1.split('l1')[0] + 'l1' + '/l1_mlog_stats.txt'
+    else:
+        mlog_path = l1 + '/l1_mlog_stats.txt'
+    copy_output = subprocess.check_output(
+            ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
+
+    #print(output)
+    print("Writing l1 output (l1.txt) to results directory...")
+    l1_out = open('./' + time_dir + '/l1.txt', 'w')
+    out = l1_out.write(l1_output)
+    l1_out.close()
+
+    print("Writing testfile output (testmac.txt) to results directory...")
+    test_output = open('./' + time_dir + '/testmac.txt', 'w')
+    out = test_output.write(testmac_output)
+    test_output.close()
+
+    print("Completed.")
+
+    return
 
 if __name__ == '__main__':
     main()
