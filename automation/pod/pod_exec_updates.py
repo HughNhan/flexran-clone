@@ -339,7 +339,7 @@ def run_commands_on_pod(name, api_instance, commands, pod_namespace):
     return output
 
 # A method to execute the given test on the pod.
-def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_namespace, timeout):
+def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_namespace, timeout_seconds):
     # Calling exec interactively
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -421,21 +421,25 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     timed_out = False
     while testmac_resp.is_open():
         testmac_resp.run_forever(3)
-        testmac_output = testmac_output + testmac_resp.read_stdout()
-        l1_output = l1_output + resp.read_stdout()
+        testmac_output_update = testmac_resp.read_stdout(timeout=timeout_seconds)
+        testmac_output = testmac_output + testmac_output_update
+        l1_output = l1_output + resp.read_stdout(timeout=timeout_seconds)
         result = re.search(r"All Tests Completed.*\n", testmac_output)
         seg_fault = re.search(r"Segmentation Fault!*\n", testmac_output)
         core_os_terminal = re.search(r".*\#", testmac_output)
 
-        if testmac_output:
+        if testmac_output_update:
             last_update = time.time()
-        elif time.time() - last_update >= timeout:
+        elif time.time() - last_update >= timeout_seconds:
             print('Testmac timed out without update!\n')
             timed_out = True
 
-        if result or seg_fault or core_os_terminal or timed_out:
+        if result:
             write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
             break
+        elif seg_fault or core_os_terminal or timed_out:
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
+            sys.exit(1)
 
     resp.write_stdin("exit\r\n")
     testmac_resp.write_stdin("exit\r\n")
@@ -468,7 +472,8 @@ def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_outp
     else:
         print(time_dir + ' directory exits')
 
-    print(result.group())
+    if result:
+        print(result.group())
     print("Copying stat file (l1_mlog_stats.txt) to results directory...")
 
     if xran:
