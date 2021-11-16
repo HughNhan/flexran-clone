@@ -1,8 +1,22 @@
 # Run FlexRAN test suites in OpenShift
 
+## Install kernel RT
+
+With a fresh installed RHEL8,
+
+```
+subscription-manager register
+subscription-manager attach --auto
+subscription-manager repos --enable rhel-8-for-x86_64-rt-rpms
+yum groupinstall -y RT
+sed -i -r 's/^(GRUB_CMDLINE_LINUX=.*)"/\1 default_hugepagesz=1G hugepagesz=1G hugepages=16 iommu=pt intel_iommu=on"/' /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
+reboot
+```
+
 ## Compile flexran
 
-The following steps prove to work on fresh installed RHEL8.2 and FlexRAN 21.03
+The following steps prove to work on RHEL8.2 and FlexRAN 21.03
 
 ```
 # Assume all source files are pre-saved under /opt/src/flexran
@@ -11,23 +25,40 @@ ICC_TAR_BALL=/opt/src/flexran/system_studio_2019_update_5_ultimate_edition.tar.g
 ICC_LICENSE=/opt/src/flexran/flexran_license.lic
 FLEXRAN_TAR_BALL=/opt/src/flexran/FlexRAN-21.03.tar.gz
 
-subscription-manager register
-subscription-manager attach --auto
 subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
 yum groupinstall -y 'Development Tools'
-yum install -y git patch tar zip unzip python3 cmake3 libstdc++-static elfutils-libelf-devel zlib-devel numactl-devel libhugetlbfs-devel
+yum install -y expect git patch tar zip unzip python3 cmake3 libstdc++-static elfutils-libelf-devel zlib-devel numactl-devel libhugetlbfs-devel
 pip3 install meson && pip3 install ninja
-mkdir -p /opt && cd /opt && git clone git://dpdk.org/dpdk-stable dpdk
+rm -rf /opt/dpdk && mkdir -p /opt && cd /opt && git clone git://dpdk.org/dpdk-stable dpdk
 cd /opt/dpdk && git checkout 20.11 && patch -p1 < ${DPDK_PATCH}
+if [[ ! -e /opt/intel/system_studio_2019/bin/icc ]]; then
 cd /opt && tar zxvf ${ICC_TAR_BALL}
 cd /opt/system_studio_2019_update_5_ultimate_edition && sed -i -r -e 's/^ACCEPT_EULA=.*/ACCEPT_EULA=accept/' -e 's/^ACTIVATION_TYPE=.*/ACTIVATION_TYPE=license_file/' -e "s%^#?ACTIVATION_LICENSE_FILE=.*%ACTIVATION_LICENSE_FILE=${ICC_LICENSE}%" silent.cfg
 cd /opt/system_studio_2019_update_5_ultimate_edition && ./install.sh -s silent.cfg
-cd /opt && mkdir -p flexran && tar zxvf ${FLEXRAN_TAR_BALL} -C flexran/
-cd /opt/flexran && ./extract.sh
-cd /opt/flexran && source ./set_env_var.sh -d
+fi
+rm -rf /opt/flexran && cd /opt && mkdir -p flexran && tar zxvf ${FLEXRAN_TAR_BALL} -C flexran/
+cd /opt/flexran && expect <<END_EXPECT 
+set timeout 300
+spawn ./extract.sh
+expect {
+-ex {[.]} {send "\r"; exp_continue}
+-ex {[Y]?} {send "y\r"; exp_continue}
+-ex {--More--} {send " "; exp_continue}
+}
+END_EXPECT
+# If above expect step fails, try it manually: cd /opt/flexran && ./extract.sh
+cd /opt/flexran && expect <<END_EXPECT
+set timeout 5
+spawn sh -c {source ./set_env_var.sh -d}
+expect {
+-ex {Install Directory for icc} {send "/opt/intel/system_studio_2019\r"; exp_continue}
+-ex {DPDK Install Directory} {send "/opt/dpdk\r"; exp_continue}
+}
+END_EXPECT
+# if above expect step fails, try it manually: cd /opt/flexran && source ./set_env_var.sh -d
 sed -r -i -e 's%^#include <linux/bootmem.h>%//#include <linux/bootmem.h>%' /opt/flexran/libs/cpa/sub6/rec/drv/src/nr_dev.c
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk
-cd /opt/dpdk && meson build
+rm -rf /opt/dpdk/build && cd /opt/dpdk && meson build
 cd /opt/dpdk/build && meson configure -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
 export MESON_BUILD=1
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
@@ -36,10 +67,10 @@ cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
 ## Build container image
 
 ```
-sh flexran-container.sh
+cd flexran-image && ./build.sh build
 ```
 
-The script will build a container image "flexran".
+The script will build a container image "flexran". Once the build is done, the image can be pushed to a local registry.
 
 
 ## Verify flexran container image using podman
