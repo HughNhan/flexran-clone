@@ -428,22 +428,23 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
         l1_output = l1_output + resp.read_stdout(timeout=timeout_seconds)
         result = re.search(r"All Tests Completed.*\n", testmac_output)
         seg_fault = re.search(r"Segmentation Fault!*\n", testmac_output)
-        #core_os_terminal = re.search(r".*\#", testmac_output)
+        core_os_terminal = re.search(r".*\#", testmac_output)
 
         if testmac_output_update:
             last_update = time.time()
         elif time.time() - last_update >= timeout_seconds:
-            print('Testmac timed out without update!\n')
             timed_out = True
 
         if result:
             write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
             break
-        elif seg_fault or timed_out:
+        elif seg_fault or timed_out or core_os_terminal:
             if seg_fault:
-                print('seg')
+                print('Segmentation Fault in Testmac!\n')
             elif timed_out:
-                print('timed_out')
+                print('Testmac timed out without update!\n')
+            elif core_os_terminal:
+                print('Testmac exited without finishing!\n')
             write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
             sys.exit(1)
 
