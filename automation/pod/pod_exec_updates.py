@@ -375,7 +375,9 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     if "welcome" in output:
         print("l1app ready\n")
     else:
+        print("L1 failed to start!\n")
         print(output)
+        write_to_files(testfile, '', xran, l1, pod_name, output, '')
         sys.exit(1)
 
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -410,7 +412,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     else:
         print("Testmac failed to start!\n")
         print(output)
-        write_to_files(testfile, '', xran, l1, pod_name, l1_output, testmac_output)
+        write_to_files(testfile, '', xran, l1, pod_name, l1_output, output)
         sys.exit(1)
 
     print('Running tests...')
@@ -480,9 +482,11 @@ def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_outp
         mlog_path = l1.split('l1')[0] + 'l1' + '/l1_mlog_stats.txt'
     else:
         mlog_path = l1 + '/l1_mlog_stats.txt'
-    copy_output = subprocess.check_output(
-            ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
-
+    try:
+        copy_output = subprocess.check_output(
+                ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
+    except:
+        print("Did not copy l1_mlog_stats.txt")
     #print(output)
     print("Writing l1 output (l1.txt) to results directory...")
     l1_out = open('./' + time_dir + '/l1.txt', 'w')
