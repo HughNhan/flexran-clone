@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flexran-du
-  namespace: default
+  namespace: flexran-test 
   labels:
     node-role.kubernetes.io/worker-cnf: ""
 spec:

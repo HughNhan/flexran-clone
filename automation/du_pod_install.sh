@@ -25,7 +25,7 @@ This script starts a flexran test pod.
 
 parse_args $@
 
-if ! oc get pod flexran-du 2>/dev/null; then
+if ! oc get pod flexran-du --namespace flexran-test 2>/dev/null; then
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml ..."
     # is there a local flexran install?
     local_install_version=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
@@ -48,6 +48,14 @@ if ! oc get pod flexran-du 2>/dev/null; then
         exit 1
     fi 
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml: done"
+    
+    #create flexran-test namespace
+    if ! oc get namespace flexran-test 2>/dev/null; then
+	echo "Create namespace flexran-test"
+        oc create namespace flexran-test 
+    fi
+    
+
 
     if [[ "${timer_mode:-true}" == "true" ]]; then
         yq -i -y 'del(.metadata.annotations)' ${MANIFEST_DIR}/pod_flexran_du.yaml
@@ -56,5 +64,5 @@ if ! oc get pod flexran-du 2>/dev/null; then
     oc create -f ${MANIFEST_DIR}/pod_flexran_du.yaml
 fi
 
-wait_named_pod_in_namespace default flexran-du
+wait_named_pod_in_namespace flexran-test flexran-du
 

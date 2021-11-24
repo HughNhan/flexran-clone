@@ -26,3 +26,6 @@ if [[ "${WAIT_MCP}" == "true" ]]; then
     printf "\npod flexran-du deleted\n"
 fi
 
+#delete name space
+oc delete namespace flexran-test
+

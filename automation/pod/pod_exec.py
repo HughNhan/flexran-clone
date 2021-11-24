@@ -16,10 +16,11 @@ from kubernetes.stream import stream
 
 def exec_commands(api_instance):
     name = 'flexran-du'
+    namespace = 'flexran-test'
     resp = None
     try:
         resp = api_instance.read_namespaced_pod(name=name,
-                                                namespace='default')
+                                                namespace=namespace)
     except ApiException as e:
         if e.status != 404:
             print("Unknown error: %s" % e)
@@ -30,10 +31,10 @@ def exec_commands(api_instance):
         with open("pod_flexran_acc100.yaml", "r") as f:
             pod_manifest = yaml.safe_load(f)
         resp = api_instance.create_namespaced_pod(body=pod_manifest,
-                                                  namespace='default')
+                                                  namespace=namespace)
         while True:
             resp = api_instance.read_namespaced_pod(name=name,
-                                                    namespace='default')
+                                                    namespace=namespace)
             if resp.status.phase != 'Pending':
                 break
             time.sleep(1)
@@ -43,7 +44,7 @@ def exec_commands(api_instance):
     exec_command = ['/bin/sh']
     resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
-                  'default',
+                  namespace,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,
@@ -74,7 +75,7 @@ def exec_commands(api_instance):
 
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
-                  'default',
+                  namespace,
                   command=exec_command,
                   stderr=True, stdin=True,
                   stdout=True, tty=True,

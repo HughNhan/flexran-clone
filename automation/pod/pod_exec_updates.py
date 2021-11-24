@@ -86,9 +86,9 @@ def main():
     check_pod(pod_name, core_v1, pod_namespace)
 
     if files:
-        copy_files(pod_name, destination, files)
+        copy_files(pod_namespace + '/' + pod_name, destination, files)
     if directories:
-        copy_directories(pod_name, destination, directories)
+        copy_directories(pod_namespace + '/' + pod_name, destination, directories)
 
     test_list = get_tests_from_yaml(cfg)
     architecture_dir = get_architecture_from_yaml(cfg, xran)
@@ -197,7 +197,7 @@ def get_testmac_from_yaml(cfg):
 # destination. This is used to move the scripts, configuration files, etc. to
 # the pod.
 def copy_files(pod_name, destination, files):
-    print('\nCopying files to pod \'' + pod_name + '\':')
+    print('\nCopying files to pod \'' + "flexran-test/" +  pod_name + '\':')
     for file in files:
         output = subprocess.check_output(
                 ['oc', 'cp', file, pod_name + ':' + destination])
