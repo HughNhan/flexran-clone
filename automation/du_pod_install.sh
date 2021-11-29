@@ -35,6 +35,8 @@ if ! oc get pod flexran-du --namespace ${FLAXRAN_TEST_NS} 2>/dev/null; then
         exit 1
     fi
     envsubst < templates/pod_flexran_acc100.yaml.template > ${MANIFEST_DIR}/pod_flexran_du.yaml
+    //replace the name space
+    sed -i "s/template-flexran-ns-name/${FLAXRAN_DU_NS}/g" generated_manifests/pod_flexran_du.yaml
     if [[ "${DU_FEC}" == "SW" ]]; then
         # remove intel.com/intel_fec_acc100: line
         sed -i '/intel.com\/intel_fec_acc100:/d' ${MANIFEST_DIR}/pod_flexran_du.yaml
