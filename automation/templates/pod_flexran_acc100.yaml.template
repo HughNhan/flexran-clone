@@ -8,12 +8,12 @@ metadata:
       [
          {
            "name": "sriov-vlan10",
-	   "namespace": "flexran-test",
+           "namespace": "flexran-test",
            "mac": "00:11:22:33:00:00"
          },
          {
            "name": "sriov-vlan20",
-	   "namespace": "flexran-test",
+           "namespace": "flexran-test",
            "mac": "00:11:22:33:00:10"
          }
       ]

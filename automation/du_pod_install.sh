@@ -25,7 +25,7 @@ This script starts a flexran test pod.
 
 parse_args $@
 
-if ! oc get pod flexran-du --namespace flexran-test 2>/dev/null; then
+if ! oc get pod flexran-du --namespace ${FLAXRAN_TEST_NS} 2>/dev/null; then
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml ..."
     # is there a local flexran install?
     local_install_version=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
