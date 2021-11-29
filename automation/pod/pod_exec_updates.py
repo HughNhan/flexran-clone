@@ -377,7 +377,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     else:
         print("L1 failed to start!\n")
         print(output)
-        write_to_files(testfile, '', xran, l1, pod_name, output, '')
+        write_to_files(testfile, '', xran, l1, pod_name, output, '', pod_namespace)
         sys.exit(1)
 
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -412,7 +412,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     else:
         print("Testmac failed to start!\n")
         print(output)
-        write_to_files(testfile, '', xran, l1, pod_name, l1_output, output)
+        write_to_files(testfile, '', xran, l1, pod_name, l1_output, output, pod_namespace)
         sys.exit(1)
 
     print('Running tests...')
@@ -436,7 +436,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
             timed_out = True
 
         if result:
-            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace)
             break
         elif seg_fault or timed_out or core_os_terminal:
             if seg_fault:
@@ -445,7 +445,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
                 print('Testmac timed out without update!\n')
             elif core_os_terminal:
                 print('Testmac exited without finishing!\n')
-            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace)
             sys.exit(1)
 
     resp.write_stdin("exit\r\n")
@@ -454,7 +454,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     resp.close()
     testmac_resp.close()
 
-def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output):
+def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace):
     print('Checking directory status...')
     directory_exits = os.path.isdir(RESULTS_DIR)
     if not directory_exits:
@@ -489,7 +489,7 @@ def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_outp
         mlog_path = l1 + '/l1_mlog_stats.txt'
     try:
         copy_output = subprocess.check_output(
-                ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
+                ['oc', 'cp', pod_namespace + '/' + pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
     except:
         print("Did not copy l1_mlog_stats.txt")
     #print(output)
