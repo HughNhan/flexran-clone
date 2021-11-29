@@ -51,7 +51,7 @@ def main():
         required=False, action='store_true',
         help='a flag indicating quick phystart in xran mode (phystart 4 0 100007)')
     parser.add_argument('-namespace', '--namespace', type=str,
-        required=True,
+        required=False, default='default',
         help='the namespace of the pod')
     parser.add_argument('-timeout', '--timeout', type=int,
         required=True,
@@ -86,9 +86,9 @@ def main():
     check_pod(pod_name, core_v1, pod_namespace)
 
     if files:
-        copy_files(pod_namespace + '/' + pod_name, destination, files)
+        copy_files(pod_namespace, pod_name, destination, files)
     if directories:
-        copy_directories(pod_namespace + '/' + pod_name, destination, directories)
+        copy_directories(pod_namespace, pod_name, destination, directories)
 
     test_list = get_tests_from_yaml(cfg)
     architecture_dir = get_architecture_from_yaml(cfg, xran)
@@ -196,11 +196,11 @@ def get_testmac_from_yaml(cfg):
 # A method to copy a list of files from the host to the pod at the passed
 # destination. This is used to move the scripts, configuration files, etc. to
 # the pod.
-def copy_files(pod_name, destination, files):
-    print('\nCopying files to pod \'' + "flexran-test/" +  pod_name + '\':')
+def copy_files(pod_namespace, pod_name, destination, files):
+    print('\nCopying files to pod \'' + pod_namespace + "/" +  pod_name + '\':')
     for file in files:
         output = subprocess.check_output(
-                ['oc', 'cp', file, pod_name + ':' + destination])
+                ['oc', 'cp', file, pod_namespace + '/' + pod_name + ':' + destination])
         print(file)
     return
 
@@ -209,10 +209,10 @@ def copy_files(pod_name, destination, files):
 # the pod.
 # NOTE: Need to enable rsync on pod.
 def copy_directories(pod_name, destination, directories):
-    print('Copying directories to pod \'' + pod_name + '\':')
+    print('Copying directories to pod \'' + pod_namespace + "/" + pod_name + '\':')
     for directory in directories:
         output = subprocess.check_output(
-                ['oc', 'rsync', directory, pod_name + ':' + destination])
+                ['oc', 'rsync', directory, pod_namespace + '/' + pod_name + ':' + destination])
         print(directory)
     return
 
