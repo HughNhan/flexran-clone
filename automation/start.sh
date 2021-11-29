@@ -42,6 +42,12 @@ fi
 ./du_pod_cleanup.sh
 END
 
+#create flexran-test namespace
+if ! oc get namespace flexran-test 2>/dev/null; then
+echo "Create namespace flexran-test"
+oc create namespace flexran-test 
+fi
+
 pause_mcp
 ./ptp_operator_install.sh -n
 ./sriov_operator_install.sh -n
@@ -53,6 +59,8 @@ wait_mcp
 # ./fec_operator_install.sh
 
 echo "setup ru ..."
+
+
 ./ru_sriov.sh setup
 ./ru_ptp.sh setup
 ./ru_start.sh

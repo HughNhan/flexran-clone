@@ -27,5 +27,5 @@ if [[ "${WAIT_MCP}" == "true" ]]; then
 fi
 
 #delete name space
-oc delete namespace flexran-test
+#oc delete namespace flexran-test
 
