@@ -31,7 +31,7 @@ wait_mcp
 #cp -R pod/cfg_examples/timer_mode_cfg_ns3000_debug.yaml pod/timer_mode_cfg.yaml
 #### End of dci debug @80
 
-./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/timer_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py -f ./pod/pod_exec.py -f ./pod/pod_exec_updates.py -f ./pod/pod_flexran_sw.yaml -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/timer_mode_cfg.yaml -namespace flexran-test -timeout 30
+./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/timer_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/pod_flexran_sw.yaml -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/timer_mode_cfg.yaml -namespace ${FLAXRAN_DU_NS} -timeout 30
 
 if [[ "${RUN_XRAN:-false}" == "false" ]]; then
     echo "test complete"
@@ -42,10 +42,10 @@ fi
 ./du_pod_cleanup.sh
 END
 
-#create flexran-test namespace
-if ! oc get namespace flexran-test 2>/dev/null; then
-echo "Create namespace flexran-test"
-oc create namespace flexran-test 
+#create flexran test namespace
+if ! oc get namespace ${FLAXRAN_DU_NS} 2>/dev/null; then
+echo "Create namespace ${FLAXRAN_DU_NS}"
+oc create namespace ${FLAXRAN_DU_NS} 
 fi
 
 pause_mcp
@@ -68,7 +68,7 @@ echo "setup ru ..."
 ##### now run the front haul test ####
 ./du_pod_install.sh -x
 
-./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py -f ./pod/pod_exec.py -f ./pod/pod_exec_updates.py -f ./pod/pod_flexran_sw.yaml -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace flexran-test -timeout 30
+./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/pod_flexran_sw.yaml -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace ${FLAXRAN_DU_NS} -timeout 30
 
 echo "test complete"
 exit 0
