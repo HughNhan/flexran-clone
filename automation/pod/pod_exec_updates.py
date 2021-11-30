@@ -51,7 +51,7 @@ def main():
         required=False, action='store_true',
         help='a flag indicating quick phystart in xran mode (phystart 4 0 100007)')
     parser.add_argument('-namespace', '--namespace', type=str,
-        required=True,
+        required=False, default='default',
         help='the namespace of the pod')
     parser.add_argument('-timeout', '--timeout', type=int,
         required=True,
@@ -86,9 +86,9 @@ def main():
     check_pod(pod_name, core_v1, pod_namespace)
 
     if files:
-        copy_files(pod_name, destination, files)
+        copy_files(pod_namespace, pod_name, destination, files)
     if directories:
-        copy_directories(pod_name, destination, directories)
+        copy_directories(pod_namespace, pod_name, destination, directories)
 
     test_list = get_tests_from_yaml(cfg)
     architecture_dir = get_architecture_from_yaml(cfg, xran)
@@ -196,11 +196,11 @@ def get_testmac_from_yaml(cfg):
 # A method to copy a list of files from the host to the pod at the passed
 # destination. This is used to move the scripts, configuration files, etc. to
 # the pod.
-def copy_files(pod_name, destination, files):
-    print('\nCopying files to pod \'' + pod_name + '\':')
+def copy_files(pod_namespace, pod_name, destination, files):
+    print('\nCopying files to pod \'' + pod_namespace + "/" +  pod_name + '\':')
     for file in files:
         output = subprocess.check_output(
-                ['oc', 'cp', file, pod_name + ':' + destination])
+                ['oc', 'cp', file, pod_namespace + '/' + pod_name + ':' + destination])
         print(file)
     return
 
@@ -209,10 +209,10 @@ def copy_files(pod_name, destination, files):
 # the pod.
 # NOTE: Need to enable rsync on pod.
 def copy_directories(pod_name, destination, directories):
-    print('Copying directories to pod \'' + pod_name + '\':')
+    print('Copying directories to pod \'' + pod_namespace + "/" + pod_name + '\':')
     for directory in directories:
         output = subprocess.check_output(
-                ['oc', 'rsync', directory, pod_name + ':' + destination])
+                ['oc', 'rsync', directory, pod_namespace + '/' + pod_name + ':' + destination])
         print(directory)
     return
 
@@ -377,7 +377,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     else:
         print("L1 failed to start!\n")
         print(output)
-        write_to_files(testfile, '', xran, l1, pod_name, output, '')
+        write_to_files(testfile, '', xran, l1, pod_name, output, '', pod_namespace)
         sys.exit(1)
 
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
@@ -412,7 +412,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     else:
         print("Testmac failed to start!\n")
         print(output)
-        write_to_files(testfile, '', xran, l1, pod_name, l1_output, output)
+        write_to_files(testfile, '', xran, l1, pod_name, l1_output, output, pod_namespace)
         sys.exit(1)
 
     print('Running tests...')
@@ -436,7 +436,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
             timed_out = True
 
         if result:
-            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace)
             break
         elif seg_fault or timed_out or core_os_terminal:
             if seg_fault:
@@ -445,7 +445,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
                 print('Testmac timed out without update!\n')
             elif core_os_terminal:
                 print('Testmac exited without finishing!\n')
-            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output)
+            write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace)
             sys.exit(1)
 
     resp.write_stdin("exit\r\n")
@@ -454,7 +454,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     resp.close()
     testmac_resp.close()
 
-def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output):
+def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace):
     print('Checking directory status...')
     directory_exits = os.path.isdir(RESULTS_DIR)
     if not directory_exits:
@@ -489,7 +489,7 @@ def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_outp
         mlog_path = l1 + '/l1_mlog_stats.txt'
     try:
         copy_output = subprocess.check_output(
-                ['oc', 'cp', pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
+                ['oc', 'cp', pod_namespace + '/' + pod_name + ':' + mlog_path, "./" + time_dir + "/l1_mlog_stats.txt"])
     except:
         print("Did not copy l1_mlog_stats.txt")
     #print(output)
