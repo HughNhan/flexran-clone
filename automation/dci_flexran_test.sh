@@ -9,6 +9,7 @@ cd $dir/
 
 pwd=${PWD}
 
+rm -rf "results/"
 rm -rf "test_logs/"
 mkdir -p "test_logs"
 echo "##########  Enter automation direcoty: $pwd    #############" | tee -a "test_logs/automation.log"

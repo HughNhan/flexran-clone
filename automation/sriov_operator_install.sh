@@ -34,6 +34,7 @@ echo "generating ${MANIFEST_DIR}/sriov-nic-policy.yaml: done"
 echo "generating ${MANIFEST_DIR}/sriov-network.yaml ..."
 mkdir -p ${MANIFEST_DIR}/
 envsubst < templates/sriov-network.yaml.template > ${MANIFEST_DIR}/sriov-network.yaml
+sed -i "s/template-flexran-ns-name/${FLAXRAN_DU_NS}/g" ${MANIFEST_DIR}/sriov-network.yaml
 echo "generating ${MANIFEST_DIR}/sriov-network.yaml: done"
 
 ##### apply sriov-nic-policy ######
