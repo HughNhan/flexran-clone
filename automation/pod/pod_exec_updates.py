@@ -43,8 +43,6 @@ def main():
         type=str, required=False,
         help='the directory(ies) to be copied to the pod (requires rsync or ' +
              'tar on pod)')
-    #parser.add_argument('-r', '--restart', default=False, action='store_true',
-    #    help='a flag which will cause the pod to restart (useful for between each test)')
     parser.add_argument('-x', '--xran', default=False, action='store_true',
         help='a flag indicating xran test mode')
     parser.add_argument('-phystart', '--phystart', default=False,
@@ -65,7 +63,6 @@ def main():
     no_sibling = args.no_sibling
     files = args.file
     directories = args.dir
-    #restart = args.restart
     xran = args.xran
     phystart = args.phystart
     pod_namespace = args.namespace
@@ -81,7 +78,6 @@ def main():
     Configuration.set_default(c)
     core_v1 = core_v1_api.CoreV1Api()
 
-    #check_and_start_pod(pod_name, core_v1, restart, , pod_namespace)
     # Check the pod is running, exit otherwise.
     check_pod(pod_name, core_v1, pod_namespace)
 
@@ -454,6 +450,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
     resp.close()
     testmac_resp.close()
 
+# A method to write the stdout of l1 and testmac, as well as the results of the test, to files.
 def write_to_files(testfile, result, xran, l1, pod_name, l1_output, testmac_output, pod_namespace):
     print('Checking directory status...')
     directory_exits = os.path.isdir(RESULTS_DIR)

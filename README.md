@@ -37,7 +37,7 @@ cd /opt/system_studio_2019_update_5_ultimate_edition && sed -i -r -e 's/^ACCEPT_
 cd /opt/system_studio_2019_update_5_ultimate_edition && ./install.sh -s silent.cfg
 fi
 rm -rf /opt/flexran && cd /opt && mkdir -p flexran && tar zxvf ${FLEXRAN_TAR_BALL} -C flexran/
-cd /opt/flexran && expect <<END_EXPECT 
+cd /opt/flexran && expect <<END_EXPECT
 set timeout 300
 spawn ./extract.sh
 expect {
@@ -904,3 +904,46 @@ source /opt/flexran/auto/env.src
 ```
 
 This will automatically start the test suite.
+
+# Run automated FlexRAN test suites in OpenShift
+
+## Configure test YAML
+Add configuration information to the YAML file for timer mode and xran tests. Below are the highest level dictionaries and their fields, as well as an example of a timer mode test configuration.
+
+### Cfg_file_paths
+#### For timer mode:
+`phycfg_timer`: the path of the directory containing the phycfg xml (likely the l1 directory)
+`testmac_cfg`: the path of the directory containing the testmac xml (likely the testmac directory)
+#### For xran mode:
+`phycfg_xran`: the path of the directory containing the phycfg xran xml (likely gnb directory of the xran test)
+`xrancfg_sub6_oru`: the path of the directory containing the sub6 xran xml (likely gnb directory of the xran test)
+`testmac_cfg`: the path of the directory containing the testmac xml (likely the testmac directory)
+
+### Threads
+#### For timer mode:
+`phycfg_timer`: Set the priority of `systemThread`, `FpgaDriverCpuInfo`, `FrontHaulCpuInfo`, `timerThread`, and `radioDpdkMaster`
+`testmac_cfg`: Set the priority of `systemThread`, `runThread`, `urllcThread`, and `wlsRxThread`
+#### For xran mode:
+`phycfg_xran`: Set the priority of `systemThread`, `FpgaDriverCpuInfo`, `FrontHaulCpuInfo`, `timerThread`, and `radioDpdkMaster`
+`testmac_cfg`: Set the priority of `systemThread`, `runThread`, `urllcThread`, and `wlsRxThread`
+`xrancfg_sub6_oru`: Set the priority of `xRANThread` and `xRANWorker`
+`test_mode`: Set to `xran`
+
+### Dpdk_cfgs
+#### For timer mode:
+`phycfg_timer`: Set the `dpdkMemorySize` in MB and the `dpdkEnvModeStr` to the environment variable of the hardware accelerator
+#### For xran mode:
+`phycfg_xran`: Set the `dpdkMemorySize` in MB and the `dpdkEnvModeStr` to the environment variable of the hardware accelerator
+`xrancfg_sub6_oru`: Set the `test_mode` to `xran` and the `pcideviceOpenshiftIoStr` to the environment variable of the IO NIC
+
+### Arch_dir (for timer mode tests)
+Set the directory name of the CPU architecture (i.e. `cascade_lake-sp`)
+
+### Xran_dir (for xran tests)
+Set the directory name of the xran test (i.e. `sub3_mu0_10mhz_4x4`)
+
+### Tests
+A list of test files to run (i.e. `testmac_clxsp_mu0_10mhz_hton_oru.cfg`)
+
+### Examples
+See the timer mode and xran mode examples in the `cfg_examples` directory for specific YAML formatting examples.
