@@ -1,0 +1,3 @@
+[submodule "automation/telco-intel-flexran-config"]
+	path = automation/telco-intel-flexran-config
+	url = https://github.com/dci-labs/telco-intel-flexran-config.git
