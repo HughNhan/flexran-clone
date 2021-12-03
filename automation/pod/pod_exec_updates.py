@@ -100,6 +100,8 @@ def main():
     exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
                  no_sibling, architecture_dir, xran, phystart, pod_namespace)
 
+    time.sleep(30)
+
     for testfile in test_list:
         print('--------------------------------------------------------------' +
               '------------------\nRunning test: ' + testfile + '\n----------' +
@@ -286,32 +288,35 @@ def exec_updates(name, api_instance, destination, testmac,
 
     run_commands_on_pod(name, api_instance, commands, pod_namespace)
 
+    updated = []
     for testfile in test_list:
-        if xran:
-            testfile = l1 + '/' + testfile
-        else:
-            testfile = testmac + '/' + architecture_dir + '/' + testfile
-        update_command = "./autotest.py" + " --testfile " + testfile + " --cfg " + cfg.split('/')[-1]
+        if testfile not in updated:
+            if xran:
+                full_testfile = l1 + '/' + testfile
+            else:
+                full_testfile = testmac + '/' + architecture_dir + '/' + testfile
+            update_command = "./autotest.py" + " --testfile " + full_testfile + " --cfg " + cfg.split('/')[-1]
 
-        if xran and phystart:
-            update_command = update_command + ' --phystart'
+            if xran and phystart:
+                update_command = update_command + ' --phystart'
 
-        if no_sibling:
-            update_command = update_command + ' --no_sibling'
+            if no_sibling:
+                update_command = update_command + ' --no_sibling'
 
-        # Is there a generic way to install these dependencies? VENV? pip3 freeze
-        commands = [
-            update_command,
-        ]
+            # Is there a generic way to install these dependencies? VENV? pip3 freeze
+            commands = [
+                update_command,
+            ]
 
-        output = run_commands_on_pod(name, api_instance, commands, pod_namespace)
-        if "Files updated." in output:
-            if DEBUG:
+            output = run_commands_on_pod(name, api_instance, commands, pod_namespace)
+            if "Files updated." in output:
+                if DEBUG:
+                    print(output)
+                print("Finished updating files on pod.\n")
+                updated.append(testfile)
+            else:
                 print(output)
-            print("Finished updating files on pod.\n")
-        else:
-            print(output)
-            sys.exit(1)
+                sys.exit(1)
 
 # A method which can run a list of commands on the pod.
 def run_commands_on_pod(name, api_instance, commands, pod_namespace):
@@ -364,14 +369,15 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
             c = commands.pop(0)
             print("Running command... %s\n" % c)
             resp.write_stdin(c + "\n")
-            time.sleep(1)
+            time.sleep(5)
             resp.write_stdin("\n")
         else:
             break
     # NOTE: This time might need adjusting, run_forever(5) ran into some
     #       crashing issues which we think have to do with timing.
-    resp.run_forever(10)
-    output = resp.read_stdout()
+    '''resp.run_forever(10)
+    output = resp.read_stdout(timeout=timeout_seconds)
+    output += resp.read_stdout(timeout=timeout_seconds)
     if "welcome" in output:
         print("l1app ready\n")
     else:
@@ -379,7 +385,34 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
         print(output)
         write_to_files(testfile, '', xran, l1, pod_name, output, '', pod_namespace)
         sys.exit(1)
+    '''
+    resp.run_forever(10)
+    output = ''
+    last_update = 0
+    l1_ready = False
+    while resp.is_open():
+        l1_update = resp.read_stdout(timeout=timeout_seconds)
+        output += l1_update
 
+        if l1_update:
+            last_update = time.time()
+        elif time.time() - last_update >= timeout_seconds:
+            timed_out = True
+            break
+
+        if "welcome" in output:
+            print("l1app ready\n")
+            l1_ready = True
+            break
+        resp.write_stdin('\n')
+
+    if not l1_ready:
+        print("L1 failed to start!\n")
+        print(output)
+        write_to_files(testfile, '', xran, l1, pod_name, output, '', pod_namespace)
+        print("pod: Failed to start L1. Exiting...\n")
+        sys.exit(1)
+    
     testmac_resp = stream(api_instance.connect_get_namespaced_pod_exec,
                   name,
                   pod_namespace,
@@ -398,7 +431,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
             c = commands.pop(0)
             print("Running command... %s\n" % c)
             testmac_resp.write_stdin(c + "\n")
-            time.sleep(1)
+            time.sleep(5)
             testmac_resp.write_stdin("\n")
         else:
             break
@@ -450,7 +483,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
 
     resp.write_stdin("exit\r\n")
     testmac_resp.write_stdin("exit\r\n")
-    time.sleep(5)
+    time.sleep(20)
     resp.close()
     testmac_resp.close()
 
