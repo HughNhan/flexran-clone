@@ -14,6 +14,13 @@ grub2-mkconfig -o /boot/grub2/grub.cfg
 reboot
 ```
 
+## Install private image repo
+
+The private image repo can be installed on the bastion or a different server. There is a bash script that can automate this repo install,
+```flexran-image/registry.sh```
+
+The repo will running on port 5000 using the server's default interface IP address.
+
 ## Compile flexran
 
 The following steps prove to work on RHEL8.2 and FlexRAN 21.03
@@ -904,3 +911,14 @@ source /opt/flexran/auto/env.src
 ```
 
 This will automatically start the test suite.
+
+## Automation
+
+All the steps can be done using the automation scripts under the ci branch. Each component has an install script and a cleanup script. For example, to install performance operator, one can use "performance_operator_install.sh"; to delete the performance operator, one can run "performance_operator_cleanup.sh".
+
+All bash scripts read settings from setting.env. The settings in this file should be updated before running the install scripts.
+
+All the required component bash scripts can be run sequentially. This is exactly what `start.sh` does - it will setup performance operator, wireless accelerator operator, and the flexran pod for timer mode test; after the timer mode test is complete, it will clean up the flexran pod, setup sriov operator, start a flexran pod for xran mode test.
+
+`cleanup.sh` will reverse what `start.sh` has setup.
+
