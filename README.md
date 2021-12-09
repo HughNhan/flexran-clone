@@ -66,10 +66,13 @@ END_EXPECT
 sed -r -i -e 's%^#include <linux/bootmem.h>%//#include <linux/bootmem.h>%' /opt/flexran/libs/cpa/sub6/rec/drv/src/nr_dev.c
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk
 rm -rf /opt/dpdk/build && cd /opt/dpdk && meson build
-cd /opt/dpdk/build && meson configure -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
+cd /opt/dpdk/build && meson configure -Dexamples=ethtool -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
 export MESON_BUILD=1
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b
 ```
+
+Note: If the target machine is a numa system, `yum install -y numactl-devel` is also required for the compilation.
+Note: `-Dexamples=ethtool` is not necessary for the flexran build per se, but will be used as a util tool for automation.
 
 ## Build container image
 
