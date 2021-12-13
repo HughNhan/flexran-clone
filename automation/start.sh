@@ -68,11 +68,7 @@ echo "setup ru ..."
 ./du_pod_install.sh -x
 
 sleep 5
-<<<<<<< HEAD
 ./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace ${FLAXRAN_DU_NS} -timeout 30
-=======
-./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/pod_flexran_sw.yaml -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace ${FLEXRAN_DU_NS} -timeout 30
->>>>>>> b00c1f21ba598dbd334ae800f244f3e8c227dd59
 
 echo "Flexran tests finish at the end"
 exit 0
