@@ -25,7 +25,7 @@ This script starts a flexran test pod.
 
 parse_args $@
 
-if ! oc get pod flexran-du --namespace ${FLAXRAN_DU_NS} 2>/dev/null; then
+if ! oc get pod flexran-du --namespace ${FLEXRAN_DU_NS} 2>/dev/null; then
     echo "generating ${MANIFEST_DIR}/pod_flexran_du.yaml ..."
     # is there a local flexran install?
     local_install_version=$(basename ${FLEXRAN_DIR}/SDK*.sh | sed -n -r 's/SDK-([0-9.]+)\.sh/\1/p')
@@ -36,7 +36,7 @@ if ! oc get pod flexran-du --namespace ${FLAXRAN_DU_NS} 2>/dev/null; then
     fi
     envsubst < templates/pod_flexran_acc100.yaml.template > ${MANIFEST_DIR}/pod_flexran_du.yaml
     #replace the name space
-    sed -i "s/template-flexran-ns-name/${FLAXRAN_DU_NS}/g" ${MANIFEST_DIR}/pod_flexran_du.yaml
+    sed -i "s/template-flexran-ns-name/${FLEXRAN_DU_NS}/g" ${MANIFEST_DIR}/pod_flexran_du.yaml
     if [[ "${DU_FEC}" == "SW" ]]; then
         # remove intel.com/intel_fec_acc100: line
         sed -i '/intel.com\/intel_fec_acc100:/d' ${MANIFEST_DIR}/pod_flexran_du.yaml
@@ -59,5 +59,5 @@ if ! oc get pod flexran-du --namespace ${FLAXRAN_DU_NS} 2>/dev/null; then
     oc create -f ${MANIFEST_DIR}/pod_flexran_du.yaml
 fi
 
-wait_named_pod_in_namespace ${FLAXRAN_DU_NS} flexran-du
+wait_named_pod_in_namespace ${FLEXRAN_DU_NS} flexran-du
 
