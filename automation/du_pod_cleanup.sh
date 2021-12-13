@@ -7,14 +7,14 @@ source ./functions.sh
 
 parse_args $@
 
-if oc get pod flexran-du 2>/dev/null; then
-    oc delete --wait=false pod flexran-du
+if oc get pod flexran-du -n ${FLAXRAN_DU_NS} 2>/dev/null; then
+    oc delete --wait=false pod flexran-du -n ${FLAXRAN_DU_NS}
 fi
 
 printf "deleting pod flexran-du" 
 if [[ "${WAIT_MCP}" == "true" ]]; then
     count=30
-    while oc get pod flexran-du 1>/dev/null 2>&1; do
+    while oc get pod flexran-du -n ${FLAXRAN_DU_NS} 1>/dev/null 2>&1; do
        count=$((count -1))
        if ((count == 0)); then
            printf "\nfailed to delete pod flexran-du!\n"
