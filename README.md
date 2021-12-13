@@ -925,3 +925,9 @@ All the required component bash scripts can be run sequentially. This is exactly
 
 `cleanup.sh` will reverse what `start.sh` has setup.
 
+
+## Automation with dci openshift infrastructure 
+
+The flexran automation test also can be executed from redhat DCI openshift infrastructure and the flexran automation test results will be published to redhat dci distributed servers. 
+
+The detailed information please refer to the telco-intel-flexran-config submodule as automation/telco-intel-flexran-config/README.md. To get access to the submodule, please contact Frederic Lepied (flepied@redhat.com) to join https://github.com/dci-labs or Jennifer Chen (jenchen@redhat.com) for the repo token. 
