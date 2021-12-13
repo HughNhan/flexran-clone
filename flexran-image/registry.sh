@@ -1,5 +1,10 @@
 #/bin/sh
 
+if [ "$EUID" -ne 0 ]
+    then echo "Please run as root"
+    exit 1
+fi
+
 set -euo pipefail
 
 interface_name=$(ip route | sed -nr 's/^default.* dev ([[:alnum:]_-]+).*/\1/p' | head -1) 
@@ -8,11 +13,14 @@ ip_address=$(ip add show ${interface_name} | sed -nr 's/.*inet ([0-9.]+).*/\1/p'
 ### update /etc/pki/tls/openssl.cnf and update this section
 sed -i '/^subjectAltName=/d' /etc/pki/tls/openssl.cnf
 sed -i "/^\[ v3_ca \]/a subjectAltName=IP:${ip_address}" /etc/pki/tls/openssl.cnf
+: <<'END'
+The following is what will be in the /etc/pki/tls/openssl.cnf
 [ v3_ca ]
 subjectAltName=IP:${ip_address}
+END
 
 ### create self cert
-sudo mkdir -p /opt/registry/{auth,certs,data}
+mkdir -p /opt/registry/{auth,certs,data}
 
 host_fqdn=${ip_address}
 cert_c="US"
@@ -22,7 +30,7 @@ cert_o="Red Hat, Inc"
 cert_ou="Engineering"
 cert_cn=${ip_address}
 
-sudo openssl req \
+openssl req \
         -newkey rsa:4096 \
         -nodes \
         -sha256 \
@@ -57,3 +65,26 @@ podman run -d  --privileged -p 5000:5000  --name registry \
        -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
        -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
        docker.io/library/registry:2
+
+### copy cert to http directory so that client can download it
+if [[ -e /var/www/html ]]; then
+    /bin/cp -f /opt/registry/certs/domain.crt /var/www/html
+fi
+
+### let's make systemd service for this pod so it restart on reboot
+mkdir -p /usr/local/lib/systemd/system/
+cat > /usr/local/lib/systemd/system/registry.service <<EOF
+[Unit]
+Description=private registry container
+After=network-online.target
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/podman start registry 
+ExecStop=/usr/bin/podman stop -t 10 registry
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable registry.service
+systemctl start registry.service
