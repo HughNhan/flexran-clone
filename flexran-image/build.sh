@@ -42,7 +42,7 @@ build() {
         /bin/cp -r $FLEXRAN_DIR/{wls_mod,libs,misc,bin} $STAGING_DIR/flexran/
         /bin/cp -r $FLEXRAN_DIR/xran/{app,banner.txt,build.sh,lib,Licenses.txt,misc,readme.md,test} $STAGING_DIR/flexran/xran/
         /bin/cp -r $FLEXRAN_DIR/sdk/build-avx512-icc $STAGING_DIR/flexran/sdk/
-        /bin/cp -r $DPDK_DIR/{app,devtools,drivers,kernel,lib,license,usertools} $STAGING_DIR/flexran/dpdk/
+        /bin/cp -r $DPDK_DIR/{app,devtools,drivers,kernel,lib,license,usertools,build/examples/dpdk-ethtool} $STAGING_DIR/flexran/dpdk/
         /bin/cp -r $ICC_DIR/compilers_and_libraries_2019.5.281/linux/compiler/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/mkl/lib/intel64_lin/* $ICC_DIR/compilers_and_libraries_2019/linux/ipp/lib/intel64_lin/* $STAGING_DIR/flexran/icc/
         /bin/cp -r $FLEXRAN_DIR/tests/nr5g $STAGING_DIR/flexran/tests/
         /bin/cp ./{env.src,driver.sh} $STAGING_DIR/flexran/auto/
