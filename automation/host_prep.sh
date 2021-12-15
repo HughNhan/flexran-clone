@@ -26,3 +26,25 @@ for pytool in yq; do
 done
 
 pip3 install kubernetes
+
+if [[ "${UPI_INSTALL:-false}" == "true" ]]; then
+    if [[ ! -e ~/flexran-site-manifests ]]; then
+        echo "upi install is requested but ~/flexran-site-manifests does not exist!"
+        exit 1
+    fi
+    if [[ -e ~/ocp-upi-install ]]; then
+        /bin/rm -rf ~/ocp-upi-install
+    fi
+    git clone https://github.com/jianzzha/ocp-upi-install.git ~/ocp-upi-install
+    /bin/cp -f ~/flexran-site-manifests/setup.conf.yaml ~/ocp-upi-install
+    pushd ~/ocp-upi-install
+    ./cleanup.sh
+    ./setup.sh
+    popd
+fi
+
+if ! oc get --request-timeout='10s' node; then
+    echo "OCP cluster not ready !"
+    exit 1
+fi
+

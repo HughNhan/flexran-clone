@@ -1,6 +1,36 @@
 #/bin/sh
 
-set -evuo pipefail
+set -euo pipefail
+
+parse_args() {
+   USAGE="Usage: $0 [options]
+Options:
+   [-s <Site specific manifest repo url>]  Download manifests from this repo
+
+This script starts a end to end flexran setup and test.
+"
+    while getopts "s:h" opt
+    do
+        case ${opt} in
+            s) manifest_url=$OPTARG ;;
+            h) echo "$USAGE"; exit 0 ;;
+            :) echo $USAGE; exit 1 ;;
+            *) echo $USAGE; exit 1 ;;
+        esac
+    done
+}
+
+parse_args $@
+
+if [[ -n ${manifest_url:-''} ]]; then
+    if [[ -e ~/flexran-site-manifests ]]; then
+        /bin/rm -rf ~/flexran-site-manifests
+    fi
+    git clone ${manifest_url} ~/flexran-site-manifests
+    if [[ -e ~/flexran-site-manifests/setting.env ]]; then
+        /bin/cp -f ~/flexran-site-manifests/setting.env ./setting.env
+    fi
+fi
 
 ####Following line is for dci debug @80
 #cp -R pod/cfg_examples/setting_timermode_only.env setting.env
@@ -36,7 +66,7 @@ fi
 #cp -R pod/cfg_examples/timer_mode_cfg_ns3000_debug.yaml pod/timer_mode_cfg.yaml
 #### End of dci debug @80
 sleep 5
-./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/timer_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/timer_mode_cfg.yaml -namespace ${FLAXRAN_DU_NS} -timeout 30
+./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/timer_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/timer_mode_cfg.yaml -namespace ${FLEXRAN_DU_NS} -timeout 30
 
 if [[ "${RUN_XRAN:-false}" == "false" ]]; then
     echo "test complete"
@@ -68,7 +98,7 @@ echo "setup ru ..."
 ./du_pod_install.sh -x
 
 sleep 5
-./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace ${FLAXRAN_DU_NS} -timeout 30
+./pod/pod_exec_updates.py -p flexran-du -d /opt/flexran/auto -c ./pod/xran_mode_cfg.yaml -f ./pod/autotest.py -f ./pod/cpu.py  -f ./pod/pod_exec_updates.py -f ./pod/process_testfile.py -f ./pod/read_yaml_write_xml.py -f ./pod/xran_mode_cfg.yaml --xran --phystart -namespace ${FLEXRAN_DU_NS} -timeout 30
 
 echo "Flexran tests finish at the end"
 exit 0
