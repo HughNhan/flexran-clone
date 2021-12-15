@@ -64,6 +64,7 @@ expect {
 END_EXPECT
 # if above expect step fails, try it manually: cd /opt/flexran && source ./set_env_var.sh -d
 sed -r -i -e 's%^#include <linux/bootmem.h>%//#include <linux/bootmem.h>%' /opt/flexran/libs/cpa/sub6/rec/drv/src/nr_dev.c
+cd /opt/flexran && source ./set_env_var.sh -d
 cd /opt/flexran && ./flexran_build.sh -e -r 5gnr_sub6 -b -m sdk
 rm -rf /opt/dpdk/build && cd /opt/dpdk && meson build
 cd /opt/dpdk/build && meson configure -Dexamples=ethtool -Dflexran_sdk=/opt/flexran/sdk/build-avx512-icc/install && ninja
