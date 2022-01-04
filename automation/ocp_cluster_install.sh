@@ -1,7 +1,8 @@
 #/bin/sh
 set -ex
 
-manifest_url=https://github.com/redhat-partner-solutions/flexran-site-manifests
+manifest_url=git@github.com:redhat-partner-solutions/flexran-site-manifests.git
+#https://github.com/redhat-partner-solutions/flexran-site-manifests
 #get setup specific configuration
 if [[ -e ~/flexran-site-manifests ]]; then
     /bin/rm -rf ~/flexran-site-manifests
