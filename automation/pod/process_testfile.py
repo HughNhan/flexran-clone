@@ -16,7 +16,8 @@ class ProcessTestfile:
     #   https://stackoverflow.com/questions/21409461/binary-list-from-indices-of-ascending-integer-list
     @classmethod
     def update_testfile(cls, rsc, testfile, phystart_quick):
-        print('Updating testfile...')
+        file_changed = False
+        print('Processing testfile: %s' % testfile)
         try:
             f = open(testfile, 'r')
             cfg = list(f)
@@ -33,17 +34,20 @@ class ProcessTestfile:
                 # Create the hex representation and replace the old setcore
                 new_setcore_hex = ' ' + rsc.get_free_siblings_mask(num_cpus) + '\n'
                 cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
+                file_changed = True
             elif phystart_quick and 'phystart' in line:
                 phystart_index = line.index('phystart')
                 cfg[line_index] = line.replace(line[phystart_index:], PHYSTART_QUICK_DEFAULT)
+                file_changed = True
 
             line_index += 1
 
-        # Write the new configuration to the same file.
-        try:
-            f = open(testfile, 'w')
-            f.writelines(cfg)
-        except:
-            sys.exit("can't write %s" %(cfg))
-        print('New testfile written.')
-        f.close()
+        if file_changed:
+            # Write the new configuration to the same file.
+            try:
+                f = open(testfile, 'w')
+                f.writelines(cfg)
+            except:
+                sys.exit("can't write %s" %(cfg))
+            print('Updated testfile written.')
+            f.close()

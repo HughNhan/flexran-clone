@@ -14,6 +14,8 @@ grub2-mkconfig -o /boot/grub2/grub.cfg
 reboot
 ```
 
+Note: The RT kernel is not required to compile FlexRAN or build the container.
+
 ## Install private image repo
 
 The private image repo can be installed on the bastion or a different server. There is a bash script that can automate this repo install,
@@ -23,7 +25,7 @@ The repo will running on port 5000 using the server's default interface IP addre
 
 ## Compile flexran
 
-The following steps prove to work on RHEL8.2 and FlexRAN 21.03
+The following steps prove to work on RHEL8.2 or RHEL8.5 and FlexRAN 21.03
 
 ```
 # Assume all source files are pre-saved under /opt/src/flexran
@@ -100,7 +102,7 @@ From terminal 2, run ```podman exec -it flexran sh```. The entry point for testm
 
 There are comments in the xml file to explain the purpose of these fields.
 
-To start the actual test, in the testmac console, `runall 0`
+To start the actual test, in the testmac console, `runall 0` (where 0=DL, 1=UL, 2=FD)
 
 ## OpenShift FlexRAN test topology
 
@@ -358,40 +360,42 @@ oc get node worker1 -o json | jq -r '.status.capacity'
 
 ```
 cat <<EOF  | oc create -f -
-apiVersion: sriovfec.intel.com/v1
+apiVersion: sriovfec.intel.com/v2
 kind: SriovFecClusterConfig
 metadata:
   name: config
   namespace: vran-acceleration-operators
 spec:
-  nodes:
-    - nodeName: worker1
-      physicalFunctions:
-        - pciAddress: 0000:b5:00.0
-          pfDriver: pci-pf-stub
-          vfDriver: vfio-pci
-          vfAmount: 16
-          bbDevConfig:
-            acc100:
-              pfMode: false
-              numVfBundles: 16
-              maxQueueSize: 1024
-              uplink4G:
-                numQueueGroups: 0
-                numAqsPerGroups: 16
-                aqDepthLog2: 4
-              downlink4G:
-                numQueueGroups: 0
-                numAqsPerGroups: 16
-                aqDepthLog2: 4
-              uplink5G:
-                numQueueGroups: 4
-                numAqsPerGroups: 16
-                aqDepthLog2: 4
-              downlink5G:
-                numQueueGroups: 4
-                numAqsPerGroups: 16
-                aqDepthLog2: 4
+  acceleratorSelector:
+    pciAddress: 0000:b5:00.0
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+  drainSkip: true
+  physicalFunction:
+    pfDriver: pci-pf-stub
+    vfDriver: vfio-pci
+    vfAmount: 16
+    bbDevConfig:
+      acc100:
+        pfMode: false
+        numVfBundles: 16
+        maxQueueSize: 1024
+        uplink4G:
+          numQueueGroups: 0
+          numAqsPerGroups: 16
+          aqDepthLog2: 4
+        downlink4G:
+          numQueueGroups: 0
+          numAqsPerGroups: 16
+          aqDepthLog2: 4
+        uplink5G:
+          numQueueGroups: 4
+          numAqsPerGroups: 16
+          aqDepthLog2: 4
+        downlink5G:
+          numQueueGroups: 4
+          numAqsPerGroups: 16
+          aqDepthLog2: 4
 EOF
 
 # matching: worker1   Succeeded
@@ -461,7 +465,9 @@ From terminal 2, run ```oc exec -it flexran sh```. The entry point for testmac i
 
 There are comments in the xml file to explain the purpose of these fields.
 
-To start the actual test, in the testmac console, `runall 0`
+The test configuration files found under /opt/flexran/tests/nr5g provide the configuration for the tests. Each configuration file sets the cpus to be used by the l1app using a setcore statement - for example ```setcore 0xFFF0```. These configuration files assume that the tests are running on bare metal, where all cores are available. To run the tests in a pod, each setcore statement must be updated to only use cores that are assigned to the pod and are not being used by the system/timer/runThreads assigned above. This is extremely tedious to do by hand - the [pod_exec_updates.py](automation/pod/pod_exec_updates.py) script can be used instead.
+
+To start the actual test, in the testmac console, `runall 0` (where 0=DL, 1=UL, 2=FD)
 
 
 ## Run flexran timer test suite from Openshift with FEC hardware acceleration
