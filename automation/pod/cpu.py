@@ -126,7 +126,8 @@ class CpuResource:
         for c in self.available:
             siblings = self.cpuinfo.threadsibling(c)
             for s in siblings:
-                self.available.remove(s)
+                if s in self.available:
+                    self.available.remove(s)
 
     # convert cpu list to hex
     def _cpus_to_hex(self, cpus):
@@ -152,7 +153,8 @@ class CpuResource:
         cpu = self.allocateone()
         siblings = self.cpuinfo.threadsibling(cpu)
         for s in siblings:
-            self.available.remove(s)
+            if s in self.available:
+                self.available.remove(s)
         return cpu
 
     # get these siblings but keep them in the pool; so they can be re-used

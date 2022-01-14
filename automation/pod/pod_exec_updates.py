@@ -19,6 +19,7 @@ from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 
 DEBUG = False
+NORUN = False
 RESULTS_DIR = 'results'
 
 def main():
@@ -54,6 +55,12 @@ def main():
     parser.add_argument('-timeout', '--timeout', type=int,
         required=True,
         help='the timeout (in seconds) for the test')
+    parser.add_argument('-norun', '--norun', default=False,
+        action='store_true',
+        help='do not run l1 or testmac processes - just update testcases')
+    parser.add_argument('-v', '--verbose', default=False,
+        action='store_true',
+        help='verbose output')
 
     # Parse arguments.
     args = parser.parse_args()
@@ -67,6 +74,10 @@ def main():
     phystart = args.phystart
     pod_namespace = args.namespace
     timeout = args.timeout
+    global NORUN
+    NORUN = args.norun
+    global DEBUG
+    DEBUG = args.verbose
 
     # Get Kube configuration.
     config.load_kube_config()
@@ -88,15 +99,21 @@ def main():
 
     test_list = get_tests_from_yaml(cfg)
     architecture_dir = get_architecture_from_yaml(cfg, xran)
+    test_dir_list = get_test_dir_list_from_yaml(cfg)
 
     l1 = get_l1_from_yaml(cfg)
     testmac = get_testmac_from_yaml(cfg)
 
     # Update the testfiles and xml configurations on the pod.
     exec_updates(pod_name, core_v1, destination, testmac, l1, test_list, cfg,
-                 no_sibling, architecture_dir, xran, phystart, pod_namespace)
+                 no_sibling, architecture_dir, xran, phystart, pod_namespace,
+                 test_dir_list)
 
     time.sleep(30)
+
+    if NORUN:
+        print("Exiting before starting l1 and testmac processes")
+        return
 
     for testfile in test_list:
         print('--------------------------------------------------------------' +
@@ -146,6 +163,22 @@ def get_architecture_from_yaml(cfg, xran):
         else:
             print('No architecture directory in config...')
             exit(1)
+
+# A method to get the test directory from the YAML file, taking in
+# the path to the YAML config file and returning the directory.
+def get_test_dir_list_from_yaml(cfg):
+    try:
+        f = open(cfg, 'r')
+        config_yaml = yaml.safe_load(f)
+        f.close()
+    except:
+        sys.exit("Can't open or parse %s" %(cfg))
+
+    if 'Test_dirs' in config_yaml and config_yaml['Test_dirs'] is not None:
+        return config_yaml['Test_dirs']
+    else:
+        print('No Test_dirs in config...')
+        return []
 
 # A method to get the l1 directory from the YAML file, taking in the path to
 # the YAML config file and returning the path.
@@ -275,15 +308,19 @@ def check_and_start_pod(name, api_instance, restart, pod_namespace):
 # pod.
 def exec_updates(name, api_instance, destination, testmac,
                  l1, test_list, cfg, no_sibling, architecture_dir, xran,
-                 phystart, pod_namespace):
+                 phystart, pod_namespace, test_dir_list):
+
+    # Install python modules in pod
     commands = [
         'pip3 install lxml',
         'pip3 install dataclasses',
         "cd " + destination,
     ]
 
+    # Is there a generic way to install these dependencies? VENV? pip3 freeze
     run_commands_on_pod(name, api_instance, commands, pod_namespace)
 
+    # Update configuration and test config files in pod
     updated = []
     for testfile in test_list:
         if testfile not in updated:
@@ -297,22 +334,42 @@ def exec_updates(name, api_instance, destination, testmac,
                 update_command = update_command + ' --phystart'
 
             if no_sibling:
-                update_command = update_command + ' --no_sibling'
+                update_command = update_command + ' --nosibling'
 
-            # Is there a generic way to install these dependencies? VENV? pip3 freeze
             commands = [
                 update_command,
             ]
 
             output = run_commands_on_pod(name, api_instance, commands, pod_namespace)
-            if "Files updated." in output:
+            if "Test file updated" in output:
                 if DEBUG:
                     print(output)
-                print("Finished updating files on pod.\n")
+                print("Finished updating test file %s on pod.\n" % full_testfile)
                 updated.append(testfile)
             else:
                 print(output)
                 sys.exit(1)
+
+    # Update configuration and test config files in a specified test directory in pod
+    for test_dir in test_dir_list:
+        update_command = "./autotest.py" + " --testdir " + test_dir + " --cfg " + cfg.split('/')[-1]
+
+        if no_sibling:
+            update_command = update_command + ' --nosibling'
+
+        commands = [
+            update_command,
+        ]
+
+        output = run_commands_on_pod(name, api_instance, commands, pod_namespace)
+        if "Test directory updated" in output:
+            if DEBUG:
+                print(output)
+            print("Finished updating test files in directory %s on pod.\n" % test_dir)
+        else:
+            print(output)
+            sys.exit(1)
+
 
 # A method which can run a list of commands on the pod.
 def run_commands_on_pod(name, api_instance, commands, pod_namespace):
@@ -434,7 +491,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
 
     l1_output = output
 
-    testmac_resp.run_forever(5)
+    testmac_resp.run_forever(10)
     output = testmac_resp.read_stdout()
     if "welcome" in output:
         print("Testmac ready\n")
@@ -448,7 +505,7 @@ def exec_tests(name, api_instance, pod_name, testmac, l1, testfile, xran, pod_na
 
     testmac_output = ''
 
-    last_update = 0
+    last_update = time.time()
     timed_out = False
     while testmac_resp.is_open():
         testmac_resp.run_forever(3)
