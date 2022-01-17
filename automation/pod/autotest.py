@@ -64,19 +64,6 @@ def main(name, argv):
     status_content = open(procstatus).read().rstrip('\n')
     cpursc = CpuResource(status_content, nosibling)
 
-    # Hack: The flexran code only supports a maximum of 64 cpus.
-    # See /opt/flexran/source/auxlib/cline/aux_cline.c
-    # (function cline_covert_hex_2_dec)
-    # As a workaround, remove any cpus numbered 64 or higher.
-    to_remove = []
-    for cpu in cpursc.available:
-        if cpu >= 64:
-           to_remove.append(cpu)
-    for cpu in to_remove:
-        cpursc.remove(cpu)
-    if to_remove:
-        print("Removed cpus %s from available list due to flexran limitation." % to_remove)
-
     # Note: update_cfg_files must always be called in order to remove any common cpus
     # from cpursc before cpursc is used by update_testfile below.
     Setting.update_cfg_files(cfg, cpursc)

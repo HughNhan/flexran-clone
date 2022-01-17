@@ -28,12 +28,14 @@ class ProcessTestfile:
         for line in cfg:
             if 'setcore' in line:
                 setcore_index = line.index('setcore')
-                # The number of cpus (cores or threads, depening on hyperthreading, needed.)
+                # The number of cpus (cores or threads, depending on hyperthreading, needed.)
                 # Take the string, convert to hex, convert to binary, count the 1s.
                 num_cpus = (bin(int(line[setcore_index + len('setcore'):].strip(), 16))[2:]).count('1')
                 # Create the hex representation and replace the old setcore
-                new_setcore_hex = ' ' + rsc.get_free_siblings_mask(num_cpus) + '\n'
-                cfg[line_index] = line.replace(line[setcore_index + len('setcore'):], new_setcore_hex)
+                new_setcore_hex = rsc.get_free_siblings_mask(num_cpus, max_mask_len=16)
+                print('original cfg: %s' % cfg[line_index])
+                cfg[line_index] = line.replace(line[setcore_index + len('setcore '):], new_setcore_hex + '\n')
+                print('updated cfg: %s' % cfg[line_index])
                 file_changed = True
             elif phystart_quick and 'phystart' in line:
                 phystart_index = line.index('phystart')

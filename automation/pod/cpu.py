@@ -130,15 +130,36 @@ class CpuResource:
                     self.available.remove(s)
 
     # convert cpu list to hex
-    def _cpus_to_hex(self, cpus):
+    def _cpus_to_hex(self, cpus, max_segment_len=None):
         cpu_list = [int(i in cpus) for i in range(max(cpus)+1)]
-        # Revere the list, then create the binary number.
+        # Reverse the list, then create the binary number.
         cpu_list.reverse()
         cpu_binary = 0
         for digit in cpu_list:
             cpu_binary = 2 * cpu_binary + digit
         
-        return hex(cpu_binary)
+        cpu_hex = hex(cpu_binary)
+
+        if max_segment_len is None:
+            return cpu_hex
+        else:
+            # Split hex string into segments of max_mask_len with low order
+            # cpus first. For example, with max_mask_len of 8, we would split
+            # this:
+            #   0xFFEEDDCCBBAA998877665544332211
+            # into:
+            #   0x44332211 0x88776655 0xCCBBAA99 0xFFEEDD
+            position = 0
+            split_cpu_hex = ''
+            # Remove '0x' prefix
+            cpu_hex = cpu_hex[2:]
+            while position < len(cpu_hex):
+                if position == 0:
+                    split_cpu_hex += ('0x' + cpu_hex[-(max_segment_len + position):])
+                else:
+                    split_cpu_hex += (' 0x' + cpu_hex[-(max_segment_len + position):-position])
+                position += max_segment_len
+            return split_cpu_hex
 
     # allocate one cpu, always use low order cpu if possible
     def allocateone(self):
@@ -165,9 +186,9 @@ class CpuResource:
         return cpus
 
     # get these siblings's cpu mask in hex string
-    def get_free_siblings_mask(self, num):
+    def get_free_siblings_mask(self, num, max_mask_len=None):
         cpus = self.get_free_siblings(num)
-        return self._cpus_to_hex(cpus)
+        return self._cpus_to_hex(cpus, max_mask_len)
 
     def allocate_siblings(self, num):
         cpus = []
@@ -186,9 +207,9 @@ class CpuResource:
         return cpus
 
     # allocate these siblings and return their cpu mask in hex string
-    def allocate_siblings_mask(self, num):
+    def allocate_siblings_mask(self, num, max_mask_len=None):
         cpus = self.allocate_siblings(num)
-        return self._cpus_to_hex(cpus)
+        return self._cpus_to_hex(cpus, max_mask_len)
 
     # specify the list of cpu to remove from available list
     def remove(self, l):
