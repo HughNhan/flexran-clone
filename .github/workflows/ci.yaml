@@ -10,12 +10,12 @@ on:
       - '**yaml'
 
 jobs:
-  initialize:
+  flexran test:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
-    - name: flexran test
+    - name: flexran initialization
       run: |
         cd automation
         if oc get --request-timeout='10s' node; then

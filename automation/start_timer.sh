@@ -1,5 +1,7 @@
 #/bin/sh
 
+set -euo pipefail
+
 source ./setting.env
 source ./functions.sh
 

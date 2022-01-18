@@ -1,5 +1,7 @@
 #/bin/sh
 
+set -euo pipefail
+
 ####Following line is for dci debug @80
 #cp -R pod/cfg_examples/setting_timermode_only.env setting.env
 #### End of dci debug @80
