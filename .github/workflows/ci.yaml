@@ -23,26 +23,32 @@ jobs:
         fi
         ./start_initialize.sh
   setup:
+    needs: initialize
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
     - name: flexran setup
       run: |
+        cd automation
         ./start_setup.sh
   timer:
+    needs: setup
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
     - name: flexran timer mode test
       run: |
+        cd automation
         ./start_timer.sh
   xran:
+    needs: timer
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
     - name: flexran xran mode test
       run: |
+        cd automation
         ./start_xran.sh
