@@ -1,5 +1,8 @@
 #/bin/sh
 
+source ./setting.env
+source ./functions.sh
+
 #### the following is prepare for front haul test ####
 ./du_pod_cleanup.sh
 

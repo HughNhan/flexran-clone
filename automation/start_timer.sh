@@ -1,5 +1,8 @@
 #/bin/sh
 
+source ./setting.env
+source ./functions.sh
+
 ##### now run the timer mode test suites ####
 ./du_pod_install.sh
 

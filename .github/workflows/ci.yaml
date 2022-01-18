@@ -10,15 +10,39 @@ on:
       - '**yaml'
 
 jobs:
-  build:
+  initialize:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v2
 
-    - name: flexran test
+    - name: flexran initialization
       run: |
         cd automation
         if oc get --request-timeout='10s' node; then
             ./cleanup.sh || true
         fi
-        ./start.sh
+        ./start_initialize.sh
+  setup:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: flexran setup
+      run: |
+        ./start_setup.sh
+  timer:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: flexran timer mode test
+      run: |
+        ./start_timer.sh
+  xran:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: flexran xran mode test
+      run: |
+        ./start_xran.sh
