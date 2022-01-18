@@ -9,6 +9,7 @@ Options:
 
 This script starts a end to end flexran setup and test.
 "
+
     while getopts "s:h" opt
     do
         case ${opt} in
