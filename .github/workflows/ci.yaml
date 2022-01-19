@@ -10,6 +10,21 @@ on:
       - '**yaml'
 
 jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Python 3
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6.8
+
+    - name: run unittest
+      run: |
+        cd automation
+        python3 -m unittest -v
+
   flexran:
     runs-on: self-hosted
     steps:
