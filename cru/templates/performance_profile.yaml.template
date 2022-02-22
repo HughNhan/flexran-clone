@@ -14,5 +14,5 @@ spec:
   realTimeKernel:
     enabled: true 
   nodeSelector:
-    node-role.kubernetes.io/worker-cnf: "" 
+    node-role.kubernetes.io/${MCP}: "" 
 
