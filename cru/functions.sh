@@ -168,6 +168,20 @@ Options:
 }
 
 get_mcp_progress_status () {
-    status=$(oc get mcp | awk '/worker-cnf/{if(match($2, /rendered-/)){print $4} else{print $3}}')
+    if [[ "${SNO}" == "true" ]]; then
+       status=$(oc get mcp | awk '/master-cnf/{if(match($2, /rendered-/)){print $4} else{print $3}}')
+    else
+       status=$(oc get mcp | awk '/worker-cnf/{if(match($2, /rendered-/)){print $4} else{print $3}}')
+    fi
     echo ${status}
 }
+
+
+hn_echo() {
+    echo $@
+}
+hn_exit() {
+    echo "HN exit"
+    exit
+}
+

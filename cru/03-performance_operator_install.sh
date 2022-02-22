@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Install PAO and performanceprofile for SNO or reg cluster
+# Usage:
+#   export SNO=true  - For for SNO
+#   export NSO-false - For regular cluster
+#
+
 set -euo pipefail
 
 source ./setting.env
@@ -9,9 +15,11 @@ parse_args $@
 
 # registry is not relevent to the performance operator
 # but let's take care of this as early as possible
-set_registry
+#<HN>set_registry
 
-oc label --overwrite node ${BAREMETAL_WORKER} node-role.kubernetes.io/worker-cnf=""
+if [[ "${SNO}" == "false" ]]; then
+  echo oc label --overwrite node ${BAREMETAL_WORKER} node-role.kubernetes.io/worker-cnf=""
+fi
 
 mkdir -p ${MANIFEST_DIR}/
 
@@ -37,11 +45,21 @@ export DU_ISOLATED_CPUS=$(${PYTHON} cpu_cmd.py cpuset-substract ${all_cpus} ${DU
 echo "Acquiring cpu info from worker node ${BAREMETAL_WORKER}: done"
 
 echo "generating ${MANIFEST_DIR}/performance_profile.yaml ..."
+if [[ "${SNO}" == "false" ]]; then
+    export MCP=worker-cnf
+else
+    export MCP=master
+fi
 envsubst < templates/performance_profile.yaml.template > ${MANIFEST_DIR}/performance_profile.yaml
 echo "generating ${MANIFEST_DIR}/performance_profile.yaml: done"
 
 ##### apply performance profile ######
-./create_mcp.sh
+if [[ "${SNO}" == "true" ]]; then
+   oc label mcp master machineconfiguration.openshift.io/role=master
+else
+   ./create_mcp.sh
+fi
+
 
 echo "apply ${MANIFEST_DIR}/performance_profile.yaml ..."
 oc apply -f ${MANIFEST_DIR}/performance_profile.yaml
