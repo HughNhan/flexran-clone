@@ -3,8 +3,7 @@ kind: MachineConfig
 metadata:
   labels:
     # Pay attention to the node label, create MCP accordingly
-    # machineconfiguration.openshift.io/role: worker-cnf
-    node-role.kubernetes.io/worker-cnf=
+    machineconfiguration.openshift.io/role: ${MCP}
   name: disable-chronyd
 spec:
   config:

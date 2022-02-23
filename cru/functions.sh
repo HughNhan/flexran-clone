@@ -41,15 +41,19 @@ get_ocp_channel () {
 }
 
 pause_mcp () {
-    oc patch --type=merge --patch='{"spec":{"paused":true}}' machineconfigpool/worker-cnf
+    oc patch --type=merge --patch='{"spec":{"paused":true}}' machineconfigpool/${MCP}
 }
 
 resume_mcp () {
-    oc patch --type=merge --patch='{"spec":{"paused":false}}' machineconfigpool/worker-cnf
+    oc patch --type=merge --patch='{"spec":{"paused":false}}' machineconfigpool/${MCP}
 }
 
 get_mcp_progress_status () {
-    local status=$(oc get mcp worker-cnf -o json | jq -r '.status.conditions[] | select(.type == "Updating") | .status')
+    if [[ "${SNO}" == "true" ]]; then
+      local status=$(oc get mcp master -o json | jq -r '.status.conditions[] | select(.type == "Updating") | .status')
+    else
+      local status=$(oc get mcp worker-cnf -o json | jq -r '.status.conditions[] | select(.type == "Updating") | .status')
+    fi
     echo ${status}
 }
 
@@ -165,6 +169,11 @@ Options:
     done
 
     WAIT_MCP=${WAIT_MCP:-"true"}
+    if [[ "${SNO}" == "true" ]]; then
+        MCP="master"
+    else
+        MCP="worker-cnf"
+     fi
 }
 
 get_mcp_progress_status () {

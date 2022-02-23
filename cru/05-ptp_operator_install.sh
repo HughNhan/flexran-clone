@@ -23,6 +23,11 @@ fi
 wait_pod_in_namespace openshift-ptp
 
 echo "generating ${MANIFEST_DIR}/ptp-config.yaml ..."
+if [[ "${SNO}" == "false" ]]; then
+    export MCP=worker-cnf
+else
+    export MCP=master
+fi
 envsubst < templates/ptp-config.yaml.template > ${MANIFEST_DIR}/ptp-config.yaml
 echo "generating ${MANIFEST_DIR}/ptp-config.yaml: done"
 
@@ -36,6 +41,9 @@ fi
 # disable chronyd
 echo "disable chronyd ..."
 envsubst < templates/disable-chronyd.yaml.template > ${MANIFEST_DIR}/disable-chronyd.yaml
+if [[ "${SNO}" == "false" ]]; then
+   echo "Being SNO, master and API will reboot and be silent ..."
+fi
 
 if ! oc get MachineConfig disable-chronyd 2>/dev/null; then
 oc create -f ${MANIFEST_DIR}/disable-chronyd.yaml

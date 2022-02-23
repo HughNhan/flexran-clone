@@ -13,4 +13,4 @@ spec:
   - profile: "profile1" 
     priority: 10 
     match: 
-    - nodeLabel: "node-role.kubernetes.io/worker-cnf" 
+    - nodeLabel: "node-role.kubernetes.io/${MCP}" 
