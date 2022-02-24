@@ -14,6 +14,7 @@ mkdir -p ${MANIFEST_DIR}/
 ###### install sriov operator #####
 # skip if sriov operator subscription already exists 
 if ! oc get Subscription sriov-network-operator-subsription -n openshift-sriov-network-operator 2>/dev/null; then 
+    #// Installing SR-IOV Network Operator done
     echo "generating ${MANIFEST_DIR}/sub-sriov.yaml ..."
     export OCP_CHANNEL=$(get_ocp_channel)
     envsubst < templates/sub-sriov.yaml.template > ${MANIFEST_DIR}/sub-sriov.yaml
@@ -22,6 +23,13 @@ if ! oc get Subscription sriov-network-operator-subsription -n openshift-sriov-n
 fi
 
 wait_pod_in_namespace openshift-sriov-network-operator
+
+if [[ "${SNO}" == "false" ]]; then
+   echo "disable drain since this is SNO"
+   oc patch sriovoperatorconfig default --type=merge -n openshift-sriov-network-operator --patch '{ "spec": { "disableDrain": true } }'
+fi
+
+# // Default is fine for us. No need to Configuring the SR-IOV Network Operator.
 
 echo "Acquiring SRIOV interface PCI info from worker node ${BAREMETAL_WORKER} ..."
 export DU_SRIOV_INTERFACE_PCI=$(exec_over_ssh ${BAREMETAL_WORKER} "ethtool -i ${DU_SRIOV_INTERFACE}" | awk '/bus-info:/{print $NF;}')
@@ -38,6 +46,7 @@ sed -i "s/template-flexran-ns-name/${FLEXRAN_DU_NS}/g" ${MANIFEST_DIR}/sriov-net
 echo "generating ${MANIFEST_DIR}/sriov-network.yaml: done"
 
 ##### apply sriov-nic-policy ######
+#// Configuring an SR-IOV network device.
 if ! oc get SriovNetworkNodePolicy policy-intel-west -n openshift-sriov-network-operator 2>/dev/null; then
     echo "create SriovNetworkNodePolicy ..."
     oc create -f ${MANIFEST_DIR}/sriov-nic-policy.yaml
@@ -47,6 +56,7 @@ fi
 sleep 1
 
 ##### apply sriov-network ######
+#// Configuring an SR-IOV ethernet network attachment
 if ! oc get SriovNetwork sriov-vlan10 -n openshift-sriov-network-operator 2>/dev/null; then
     echo "create SriovNetwork ..."
     oc create -f ${MANIFEST_DIR}/sriov-network.yaml

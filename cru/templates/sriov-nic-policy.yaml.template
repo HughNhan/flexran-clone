@@ -5,16 +5,16 @@ metadata:
   name: policy-intel-west
   namespace: openshift-sriov-network-operator
 spec:
-  deviceType: vfio-pci
-  #deviceType: netdevice
+  resourceName: intelnics0
+  nodeSelector:
+    feature.node.kubernetes.io/network-sriov.capable: "true"
+  priority: 5
   mtu: 9000
+  numVfs: 8
   nicSelector:
     rootDevices:
     - "${DU_SRIOV_INTERFACE_PCI}"
     pfNames:
     - "${DU_SRIOV_INTERFACE}" 
-  nodeSelector:
-    feature.node.kubernetes.io/network-sriov.capable: "true"
-  numVfs: 8
-  priority: 5
-  resourceName: intelnics0
+  deviceType: vfio-pci
+  #deviceType: netdevice
