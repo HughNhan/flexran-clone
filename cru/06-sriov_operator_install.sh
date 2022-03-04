@@ -35,6 +35,14 @@ echo "Acquiring SRIOV interface PCI info from worker node ${BAREMETAL_WORKER} ..
 export DU_SRIOV_INTERFACE_PCI=$(exec_over_ssh ${BAREMETAL_WORKER} "ethtool -i ${DU_SRIOV_INTERFACE}" | awk '/bus-info:/{print $NF;}')
 echo "Acquiring SRIOV interface PCI info from worker node ${BAREMETAL_WORKER}: done"
 
+
+if [[ "${NIC_NOTSUP}" == "true" ]]; then
+ echo " disable Webhook"
+ oc patch sriovoperatorconfig default --type=merge \
+   -n openshift-sriov-network-operator \
+    --patch '{ "spec": { "enableOperatorWebhook":  false } }'
+fi
+
 echo "generating ${MANIFEST_DIR}/sriov-nic-policy.yaml ..."
 envsubst < templates/sriov-nic-policy.yaml.template > ${MANIFEST_DIR}/sriov-nic-policy.yaml
 echo "generating ${MANIFEST_DIR}/sriov-nic-policy.yaml: done"

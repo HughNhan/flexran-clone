@@ -41,8 +41,8 @@ fi
 # disable chronyd
 echo "disable chronyd ..."
 envsubst < templates/disable-chronyd.yaml.template > ${MANIFEST_DIR}/disable-chronyd.yaml
-if [[ "${SNO}" == "false" ]]; then
-   echo "Being SNO, master and API will reboot and be silent ..."
+if [[ "${SNO}" == "true" ]]; then
+   echo "Being SNO, master and API could reboot and be silent ..."
 fi
 
 if ! oc get MachineConfig disable-chronyd 2>/dev/null; then

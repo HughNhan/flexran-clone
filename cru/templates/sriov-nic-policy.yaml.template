@@ -12,9 +12,8 @@ spec:
   mtu: 9000
   numVfs: 8
   nicSelector:
-    rootDevices:
-    - "${DU_SRIOV_INTERFACE_PCI}"
-    pfNames:
-    - "${DU_SRIOV_INTERFACE}" 
+    #rootDevices: [ "${DU_SRIOV_INTERFACE_PCI}" ]
+    pfNames: 
+    - "${DU_SRIOV_INTERFACE}"
   deviceType: vfio-pci
   #deviceType: netdevice
