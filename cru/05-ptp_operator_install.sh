@@ -13,12 +13,18 @@ mkdir -p ${MANIFEST_DIR}/
 # skip if ptp operator subscription already exists 
 if ! oc get Subscription ptp-operator-subscription -n openshift-ptp 2>/dev/null; then 
     echo "generating ${MANIFEST_DIR}/sub-ptp.yaml ..."
-    export OCP_CHANNEL=$(get_ocp_channel)
+    #export OCP_CHANNEL=$(get_ocp_channel)
+    channel=$(get_ocp_channel)
+    if [[ "${channel}" == "4.10" ]]; then
+    	export OCP_CHANNEL=stable
+    else
+    	export OCP_CHANNEL=$(channel)
+    fi
+
     envsubst < templates/sub-ptp.yaml.template > ${MANIFEST_DIR}/sub-ptp.yaml
     oc create -f ${MANIFEST_DIR}/sub-ptp.yaml
     echo "generating ${MANIFEST_DIR}/sub-ptp.yaml: done"
 fi
-
 
 wait_pod_in_namespace openshift-ptp
 
@@ -41,12 +47,14 @@ fi
 # disable chronyd
 echo "disable chronyd ..."
 envsubst < templates/disable-chronyd.yaml.template > ${MANIFEST_DIR}/disable-chronyd.yaml
-if [[ "${SNO}" == "false" ]]; then
-   echo "Being SNO, master and API will reboot and be silent ..."
+
+
+if ! oc get MachineConfig disable-chronyd 0>/dev/null; then
+oc create -f ${MANIFEST_DIR}/disable-chronyd.yaml
 fi
 
-if ! oc get MachineConfig disable-chronyd 2>/dev/null; then
-oc create -f ${MANIFEST_DIR}/disable-chronyd.yaml
+if [[ "${SNO}" == "true" ]]; then
+   echo "Being SNO, node will reboot and API be silent ..."
 fi
 
 if [[ "${WAIT_MCP}" == "true" ]]; then
