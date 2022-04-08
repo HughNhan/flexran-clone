@@ -5,6 +5,11 @@ source ./functions.sh
 
 source ./setting.env
 
+if [[ ! -f ${ORU_DIR}/run_o_ru.sh.orig ]]; then
+   # CRU/Cru HN save orig file
+   cp ${ORU_DIR}/run_o_ru.sh ${ORU_DIR}/run_o_ru.sh.orig
+fi
+
 
 if [[ ! -e /sys/class/net/${RU_SRIOV_INTERFACE} ]]; then
     echo "RU_SRIOV_INTERFACE ${RU_SRIOV_INTERFACE} not exists"
@@ -28,13 +33,15 @@ print_usage() {
 setup() {
     echo "Setting up SRIOV on RU ..."
 
-    modprobe vfio-pci
 
     echo "creating VFs on ${RU_SRIOV_INTERFACE}"
     echo 2 > /sys/class/net/${RU_SRIOV_INTERFACE}/device/sriov_numvfs    
     ip link set dev ${RU_SRIOV_INTERFACE} vf 0 vlan 10 mac 00:11:22:33:00:01 spoofchk off
     ip link set dev ${RU_SRIOV_INTERFACE} vf 1 vlan 20 mac 00:11:22:33:00:11 spoofchk off
+    # sleep a little so dmesg of VFs and binds kept in sequences. Better debug
+    sleep 10
     echo "bind VF to vfio-pci"
+    modprobe vfio-pci
     vfs_str=""
     for v in 0 1; do
         vf_pci=$(realpath /sys/class/net/${RU_SRIOV_INTERFACE}/device/virtfn${v} | awk -F '/' '{print $NF}')

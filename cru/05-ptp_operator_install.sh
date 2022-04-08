@@ -48,6 +48,8 @@ fi
 echo "disable chronyd ..."
 envsubst < templates/disable-chronyd.yaml.template > ${MANIFEST_DIR}/disable-chronyd.yaml
 
+echo "HN skip disable chronyd"
+exit
 
 if ! oc get MachineConfig disable-chronyd 0>/dev/null; then
 oc create -f ${MANIFEST_DIR}/disable-chronyd.yaml

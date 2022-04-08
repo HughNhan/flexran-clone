@@ -10,7 +10,7 @@ spec:
     feature.node.kubernetes.io/network-sriov.capable: "true"
   priority: 5
   mtu: 9000
-  numVfs: 8
+  numVfs: 2
   nicSelector:
     rootDevices:
     - "${DU_SRIOV_INTERFACE_PCI}"
